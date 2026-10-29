@@ -1,0 +1,17 @@
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.env
+.env.*
+!.env.example
+*.db
+*.sqlite
+*.sqlite3
+storage/
+.netlify/
+.render/
+/temp.py
+uvicorn.log
+uvicorn-error.log

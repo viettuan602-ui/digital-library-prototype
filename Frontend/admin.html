@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Digital Library - Quản trị</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="page-container admin-container">
+        <header class="page-header">
+            <div>
+                <h1>Digital Library - Quản trị</h1>
+                <p id="adminUserInfo">Đang tải thông tin tài khoản...</p>
+            </div>
+            <button class="admin-button admin-button-secondary" id="logoutBtn" type="button">Đăng xuất</button>
+        </header>
+
+        <main>
+            <section class="admin-intro">
+                <p class="admin-eyebrow">KHU VỰC QUẢN TRỊ</p>
+                <h2>Xin chào, quản trị viên</h2>
+                <p>Chọn một chức năng để quản lý sách trong thư viện.</p>
+            </section>
+
+            <section class="admin-menu-grid" aria-label="Chức năng quản trị">
+                <a class="admin-menu-card" href="admin-create.html">
+                    <span class="admin-menu-number">01</span>
+                    <h3>Tạo sách mới</h3>
+                    <p>Thêm thông tin sách vào hệ thống và nhận ID sách.</p>
+                    <span class="admin-menu-link">Mở màn tạo sách <span aria-hidden="true">→</span></span>
+                </a>
+                <a class="admin-menu-card admin-menu-card-accent" href="admin-publish.html">
+                    <span class="admin-menu-number">02</span>
+                    <h3>Upload và xuất bản</h3>
+                    <p>Tải PDF lên theo ID, sau đó chuyển sách sang trạng thái xuất bản.</p>
+                    <span class="admin-menu-link">Mở màn upload sách <span aria-hidden="true">→</span></span>
+                </a>
+            </section>
+
+            <section class="admin-recent-card" id="recentBookCard" hidden>
+                <div>
+                    <p class="admin-eyebrow">SÁCH VỪA TẠO</p>
+                    <h3 id="recentBookTitle">ID sách đã lưu</h3>
+                    <code id="recentBookId"></code>
+                </div>
+                <a class="admin-button admin-button-primary" id="continuePublishLink" href="admin-publish.html">Tiếp tục upload</a>
+            </section>
+        </main>
+    </div>
+    <script src="js/api.config.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/admin.js"></script>
+</body>
+</html>

@@ -1,0 +1,597 @@
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background: #f4f6f8;
+}
+
+.login-container {
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.login-box {
+    width: 400px;
+    padding: 35px;
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+.login-box h1 {
+    text-align: center;
+    margin-bottom: 10px;
+}
+
+.subtitle {
+    text-align: center;
+    color: #666;
+    margin-bottom: 30px;
+}
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: bold;
+}
+
+.form-group input {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    font-size: 15px;
+}
+
+.btn-login {
+    width: 100%;
+    padding: 12px;
+    border: none;
+    border-radius: 6px;
+    background: #2563eb;
+    color: white;
+    font-size: 16px;
+    cursor: pointer;
+}
+
+.btn-login:hover {
+    background: #1d4ed8;
+}
+
+#loginMessage {
+    text-align: center;
+    margin-top: 20px;
+}
+.page-container {
+    width: 90%;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 30px 0;
+}
+
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid #ddd;
+}
+
+.page-header h1 {
+    margin: 0 0 5px 0;
+}
+
+.page-header p {
+    margin: 0;
+    color: #666;
+}
+
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+#userRole {
+    font-weight: bold;
+}
+
+#logoutButton,
+#loadBooksButton {
+    padding: 10px 16px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    background: #2563eb;
+    color: white;
+}
+
+#logoutButton:hover,
+#loadBooksButton:hover {
+    background: #1d4ed8;
+}
+
+.books-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.books-header h2 {
+    margin: 0;
+}
+
+#booksMessage {
+    margin-bottom: 20px;
+    color: #555;
+}
+
+.books-list {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+}
+
+.book-card {
+    background: white;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1);
+}
+
+.book-card h3 {
+    margin-top: 0;
+    margin-bottom: 15px;
+}
+
+.book-card p {
+    margin: 8px 0;
+}
+
+@media (max-width: 800px) {
+
+    .books-list {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+}
+
+@media (max-width: 500px) {
+
+    .books-list {
+        grid-template-columns: 1fr;
+    }
+
+    .page-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 15px;
+    }
+
+}
+.view-book-button {
+    margin-top: 15px;
+    padding: 10px 16px;
+    border: none;
+    border-radius: 6px;
+    background: #2563eb;
+    color: white;
+    cursor: pointer;
+}
+/* xem chi tiết event*/
+.view-book-button:hover {
+    background: #1d4ed8;
+}
+
+.book-detail {
+    max-width: 800px;
+    margin: 30px auto;
+}
+
+.book-detail-card {
+    background: white;
+    padding: 30px;
+    border-radius: 10px;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1);
+}
+
+.book-detail-card h2 {
+    margin-top: 0;
+    margin-bottom: 25px;
+}
+
+.book-detail-card p {
+    margin: 15px 0;
+    font-size: 16px;
+}
+
+/* Admin workflow */
+.admin-container {
+    max-width: 1040px;
+}
+
+.admin-container [hidden] {
+    display: none !important;
+}
+
+.admin-container .page-header {
+    align-items: center;
+}
+
+.admin-container .page-header h1 {
+    margin-top: 8px;
+}
+
+.admin-button {
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+    min-height: 42px;
+    padding: 10px 16px;
+    border: 0;
+    border-radius: 7px;
+    font: inherit;
+    font-weight: 700;
+    text-decoration: none;
+    cursor: pointer;
+    transition: background-color 0.15s ease, transform 0.15s ease;
+}
+
+.admin-button:hover:not(:disabled),
+.admin-menu-card:hover {
+    transform: translateY(-1px);
+}
+
+.admin-button:disabled {
+    opacity: 0.65;
+    cursor: wait;
+}
+
+.admin-button-primary {
+    color: #fff;
+    background: #2458d3;
+}
+
+.admin-button-primary:hover:not(:disabled) {
+    background: #1948b8;
+}
+
+.admin-button-secondary {
+    color: #25324a;
+    background: #e9eef7;
+}
+
+.admin-button-secondary:hover:not(:disabled) {
+    background: #dce5f3;
+}
+
+.admin-button-publish {
+    color: #fff;
+    background: #18804b;
+}
+
+.admin-button-publish:hover:not(:disabled) {
+    background: #11683c;
+}
+
+.admin-intro {
+    margin: 34px 0 22px;
+}
+
+.admin-intro h2,
+.admin-panel h2 {
+    margin: 5px 0 8px;
+    color: #17243a;
+}
+
+.admin-intro > p:last-child,
+.admin-help {
+    color: #657187;
+    line-height: 1.55;
+}
+
+.admin-eyebrow {
+    margin: 0;
+    color: #54709e;
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.09em;
+}
+
+.admin-menu-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 18px;
+}
+
+.admin-menu-card,
+.admin-recent-card,
+.admin-panel,
+.admin-result-card {
+    border: 1px solid #e3e9f2;
+    border-radius: 12px;
+    background: #fff;
+    box-shadow: 0 5px 18px rgba(28, 45, 77, 0.06);
+}
+
+.admin-menu-card {
+    display: flex;
+    min-height: 230px;
+    flex-direction: column;
+    padding: 25px;
+    color: inherit;
+    text-decoration: none;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.admin-menu-card:hover {
+    box-shadow: 0 9px 24px rgba(28, 45, 77, 0.11);
+}
+
+.admin-menu-card-accent {
+    background: linear-gradient(145deg, #fff 45%, #f0f6ff 100%);
+}
+
+.admin-menu-number {
+    color: #7890b4;
+    font-size: 13px;
+    font-weight: 800;
+    letter-spacing: 0.1em;
+}
+
+.admin-menu-card h3 {
+    margin: 24px 0 8px;
+    color: #17243a;
+    font-size: 21px;
+}
+
+.admin-menu-card p {
+    margin: 0;
+    color: #657187;
+    line-height: 1.55;
+}
+
+.admin-menu-link {
+    margin-top: auto;
+    padding-top: 22px;
+    color: #2458d3;
+    font-weight: 700;
+}
+
+.admin-recent-card {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 20px;
+    margin-top: 20px;
+    padding: 20px 24px;
+}
+
+.admin-recent-card h3 {
+    margin: 7px 0;
+    color: #17243a;
+}
+
+.admin-recent-card code {
+    overflow-wrap: anywhere;
+    color: #40516c;
+}
+
+.admin-back-link {
+    display: inline-block;
+    color: #2458d3;
+    font-size: 14px;
+    font-weight: 700;
+    text-decoration: none;
+}
+
+.admin-back-link:hover {
+    text-decoration: underline;
+}
+
+.admin-narrow {
+    max-width: 720px;
+    margin: 28px auto 0;
+}
+
+.admin-workflow {
+    display: grid;
+    gap: 18px;
+}
+
+.admin-panel {
+    padding: 26px;
+}
+
+.admin-panel h2 {
+    margin-top: 7px;
+}
+
+.admin-help {
+    margin: 0 0 22px;
+}
+
+.admin-form {
+    display: grid;
+    gap: 17px;
+    margin-top: 20px;
+}
+
+.admin-field {
+    display: grid;
+    gap: 7px;
+}
+
+.admin-field label,
+.admin-result-content label {
+    color: #26344b;
+    font-size: 14px;
+    font-weight: 700;
+}
+
+.admin-field label span {
+    color: #c13b3b;
+}
+
+.admin-field input,
+.admin-field select,
+.admin-id-row input {
+    width: 100%;
+    min-height: 43px;
+    padding: 10px 12px;
+    border: 1px solid #cdd6e3;
+    border-radius: 6px;
+    background: #fff;
+    color: #17243a;
+    font: inherit;
+}
+
+.admin-field input:focus,
+.admin-field select:focus,
+.admin-id-row input:focus {
+    outline: 3px solid rgba(36, 88, 211, 0.15);
+    border-color: #547fe0;
+}
+
+.admin-field input[type="file"] {
+    padding: 8px;
+}
+
+.admin-submit {
+    justify-self: start;
+    min-width: 160px;
+}
+
+.admin-message {
+    min-height: 22px;
+    margin: 14px 0 0;
+    line-height: 1.45;
+}
+
+.admin-message[data-type="success"] {
+    color: #167043;
+}
+
+.admin-message[data-type="error"] {
+    color: #b42318;
+}
+
+.admin-message[data-type="info"] {
+    color: #52627a;
+}
+
+.admin-result-card {
+    display: flex;
+    gap: 17px;
+    margin-top: 18px;
+    padding: 24px;
+    border-color: #b8dfc8;
+    background: #f6fcf8;
+}
+
+.admin-result-icon {
+    display: grid;
+    width: 36px;
+    height: 36px;
+    flex: 0 0 36px;
+    place-items: center;
+    border-radius: 50%;
+    color: #fff;
+    background: #18804b;
+    font-weight: 800;
+}
+
+.admin-result-content {
+    min-width: 0;
+    flex: 1;
+}
+
+.admin-result-content h2 {
+    margin: 5px 0 18px;
+    color: #17243a;
+    overflow-wrap: anywhere;
+}
+
+.admin-id-row {
+    display: flex;
+    gap: 8px;
+    margin: 7px 0 17px;
+}
+
+.admin-result-content > .admin-button {
+    margin-top: 2px;
+}
+
+@media (max-width: 650px) {
+    .admin-menu-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .admin-recent-card {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .admin-container .page-header {
+        flex-direction: row;
+        align-items: flex-start;
+    }
+
+    .admin-container .page-header h1 {
+        font-size: 23px;
+    }
+
+    .admin-id-row {
+        align-items: stretch;
+        flex-direction: column;
+    }
+}
+/* đọc sách event*/
+.reading-section {
+    margin-top: 25px;
+}
+
+.read-book-button {
+    padding: 12px 24px;
+    border: none;
+    border-radius: 6px;
+    background: #16a34a;
+    color: white;
+    font-size: 16px;
+    cursor: pointer;
+}
+
+.read-book-button:hover {
+    background: #15803d;
+}
+
+#readingMessage {
+    margin-top: 15px;
+    color: #555;
+}
+/*menu đọc sách*/
+.read-book-button:disabled {
+    background: #9ca3af;
+    cursor: not-allowed;
+}
+
+.book-detail-card {
+    width: 100%;
+}
+
+.book-detail-card h2 {
+    margin-top: 0;
+    margin-bottom: 25px;
+}

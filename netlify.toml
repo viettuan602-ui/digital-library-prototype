@@ -1,0 +1,12 @@
+[build]
+  command = "node scripts/write_frontend_config.mjs"
+  publish = "Frontend"
+
+[build.environment]
+  NODE_VERSION = "22"
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"

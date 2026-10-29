@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Digital Library - Login</title>
+
+    <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+
+    <div class="login-container">
+
+        <div class="login-box">
+
+            <h1>Digital Library</h1>
+            <p class="subtitle">Đăng nhập hệ thống</p>
+
+            <form id="loginForm">
+
+                <div class="form-group">
+                    <label for="email">Email</label>
+                    <input
+                        type="email"
+                        id="email"
+                        placeholder="Nhập email"
+                        required
+                    >
+                </div>
+
+                <div class="form-group">
+                    <label for="password">Mật khẩu</label>
+                    <input
+                        type="password"
+                        id="password"
+                        placeholder="Nhập mật khẩu"
+                        required
+                    >
+                </div>
+
+                <button type="submit" class="btn-login">
+                    Đăng nhập
+                </button>
+
+            </form>
+
+            <p id="loginMessage"></p>
+
+            <p style="margin-top: 20px; text-align: center; font-size: 14px;">
+                Chưa có tài khoản? <a href="register.html" style="color: #007bff; text-decoration: none; font-weight: bold;">Đăng ký ngay</a>
+            </p>
+        </div>
+
+    </div>
+
+    <script src="js/api.config.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/auth.js?v=2"></script>
+
+</body>
+</html>

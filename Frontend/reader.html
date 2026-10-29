@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Digital Library - Chi tiết sách</title>
+
+    <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+
+    <div class="page-container">
+
+        <header class="page-header">
+
+            <div>
+                <h1>Digital Library</h1>
+                <p>Chi tiết sách</p>
+            </div>
+
+            <div class="header-actions">
+
+                <span id="userRole"></span>
+
+                <button id="backButton">
+                    Quay lại
+                </button>
+
+            </div>
+
+        </header>
+
+
+        <main>
+
+            <p id="bookMessage">
+                Đang tải thông tin sách...
+            </p>
+
+            <div
+                id="bookDetail"
+                class="book-detail"
+            >
+            </div>
+
+            <div class="reading-section">
+
+                <button
+                id="readBookButton"
+                class="read-book-button">
+                Đọc sách
+                </button>
+
+                <p id="readingMessage"></p>
+
+            </div>
+
+        </main>
+
+    </div>
+
+
+    <script src="js/api.config.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/books.js?v=2"></script>
+
+</body>
+
+</html>
