@@ -92,7 +92,7 @@ if (loginForm) {
 
 
                 loginMessage.textContent =
-                    `Đăng nhập thành công - Role: ${data.role}`;
+                    `Đăng nhập thành công · Vai trò: ${data.role}`;
 
 
                 console.log(
@@ -110,11 +110,11 @@ if (loginForm) {
                 if (data.role === "ADMIN" ||
                     data.role === "MANAGER") {
 
-                    window.location.href = "admin.html";
+                    window.location.href = "quan-tri.html";
 
                 } else if (data.role === "READER") {
 
-                    window.location.href = "books.html";
+                    window.location.href = "kham-pha-truyen.html";
 
                 } else {
 

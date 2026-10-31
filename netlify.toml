@@ -5,6 +5,66 @@
 [build.environment]
   NODE_VERSION = "22"
 
+[[redirects]]
+  from = "/"
+  to = "/trang-chu.html"
+  status = 200
+
+[[redirects]]
+  from = "/index.html"
+  to = "/trang-chu.html"
+  status = 301
+
+[[redirects]]
+  from = "/Trang_dieu_huong.html"
+  to = "/trang-chu.html"
+  status = 301
+
+[[redirects]]
+  from = "/login.html"
+  to = "/dang-nhap.html"
+  status = 301
+
+[[redirects]]
+  from = "/Trang_dang_nhap.html"
+  to = "/dang-nhap.html"
+  status = 301
+
+[[redirects]]
+  from = "/register.html"
+  to = "/dang-ky.html"
+  status = 301
+
+[[redirects]]
+  from = "/books.html"
+  to = "/kham-pha-truyen.html"
+  status = 301
+
+[[redirects]]
+  from = "/reader.html"
+  to = "/chi-tiet-truyen.html"
+  status = 301
+
+[[redirects]]
+  from = "/read.html"
+  to = "/doc-truyen.html"
+  status = 301
+
+[[redirects]]
+  from = "/admin.html"
+  to = "/quan-tri.html"
+  status = 301
+
+[[redirects]]
+  from = "/admin-create.html"
+  to = "/tao-truyen.html"
+  status = 301
+
+[[redirects]]
+  from = "/admin-publish.html"
+  to = "/dang-tai-xuat-ban.html"
+  status = 301
+
 [[headers]]
   for = "/*"
   [headers.values]

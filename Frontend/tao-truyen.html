@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tạo sách mới | Neptruyen</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/library.css">
+</head>
+<body class="library-site admin-site">
+    <header class="site-header admin-site-header">
+        <a class="site-brand" href="trang-chu.html"><span class="brand-symbol">N</span><span>Neptruyen<span class="brand-period">.</span></span></a>
+        <nav class="admin-top-links" aria-label="Điều hướng"><a href="quan-tri.html">Khu vực quản trị</a><a href="kham-pha-truyen.html">Thư viện</a></nav>
+        <div class="site-header-actions"><span id="adminUserInfo" class="admin-user-info">Đang tải thông tin tài khoản...</span><button class="button button-small" id="logoutBtn" type="button">Đăng xuất</button></div>
+    </header>
+    <div class="page-container admin-container">
+        <header class="page-header">
+            <div>
+                <a class="admin-back-link" href="quan-tri.html">← Menu quản trị</a>
+                <h1>Tạo sách mới</h1>
+            </div>
+        </header>
+
+        <main class="admin-narrow">
+            <section class="admin-panel">
+                <p class="admin-eyebrow">BƯỚC 1 · THÔNG TIN TRUYỆN</p>
+                <h2>Thêm sách vào Neptruyen</h2>
+                <p class="admin-help">Mã sách sẽ được lưu sau khi tạo để bạn tiếp tục tải nội dung.</p>
+
+                <form id="createBookForm" class="admin-form">
+                    <div class="admin-field">
+                        <label for="bookTitle">Tên sách <span>*</span></label>
+                        <input type="text" id="bookTitle" required maxlength="300" autocomplete="off">
+                    </div>
+                    <div class="admin-field">
+                        <label for="bookAuthor">Tác giả <span>*</span></label>
+                        <input type="text" id="bookAuthor" required maxlength="200" autocomplete="off">
+                    </div>
+                    <fieldset class="admin-field category-field">
+                        <legend>Thể loại <span>*</span></legend>
+                        <details class="category-picker" id="categoryPicker">
+                            <summary id="categoryPickerSummary">Chọn một hoặc nhiều thể loại <span class="picker-chevron" aria-hidden="true">⌄</span></summary>
+                            <div class="category-options" id="bookCategoryOptions" role="group" aria-label="Các thể loại sách">
+                                <label><input type="checkbox" name="bookCategory" value="Văn học"><span>Văn học</span></label>
+                                <label><input type="checkbox" name="bookCategory" value="Phiêu lưu"><span>Phiêu lưu</span></label>
+                                <label><input type="checkbox" name="bookCategory" value="Fantasy / Kỳ ảo"><span>Fantasy / Kỳ ảo</span></label>
+                                <label><input type="checkbox" name="bookCategory" value="Khoa học viễn tưởng"><span>Khoa học viễn tưởng</span></label>
+                                <label><input type="checkbox" name="bookCategory" value="Trinh thám"><span>Trinh thám</span></label>
+                                <label><input type="checkbox" name="bookCategory" value="Lãng mạn"><span>Lãng mạn</span></label>
+                                <label><input type="checkbox" name="bookCategory" value="Lịch sử"><span>Lịch sử</span></label>
+                                <label><input type="checkbox" name="bookCategory" value="Kỹ năng sống"><span>Kỹ năng sống</span></label>
+                                <label><input type="checkbox" name="bookCategory" value="Kinh doanh"><span>Kinh doanh</span></label>
+                                <label><input type="checkbox" name="bookCategory" value="Công nghệ"><span>Công nghệ</span></label>
+                                <label><input type="checkbox" name="bookCategory" value="Giáo dục"><span>Giáo dục</span></label>
+                                <label><input type="checkbox" name="bookCategory" value="Thiếu nhi"><span>Thiếu nhi</span></label>
+                                <label><input type="checkbox" name="bookCategory" value="Truyện tranh"><span>Truyện tranh</span></label>
+                                <label><input type="checkbox" name="bookCategory" value="Khác"><span>Khác</span></label>
+                            </div>
+                        </details>
+                        <div id="selectedCategoryChips" class="selected-category-chips" aria-live="polite"></div>
+                        <div id="customCategoryWrap" class="custom-category-wrap" hidden>
+                            <label for="customCategoryText">Thêm thể loại khác</label>
+                            <input type="text" id="customCategoryText" maxlength="100" placeholder="Ví dụ: Văn học Việt Nam">
+                        </div>
+                        <small class="field-hint">Bạn có thể chọn nhiều thể loại. Chọn “Khác” để thêm thể loại riêng.</small>
+                        <p id="categorySelectionError" class="field-error" hidden>Hãy chọn ít nhất một thể loại.</p>
+                    </fieldset>
+                    <div class="admin-field">
+                        <label for="bookAccessLevel">Mức độ truy cập</label>
+                        <select id="bookAccessLevel">
+                            <option value="PUBLIC">PUBLIC · Ai cũng đọc được</option>
+                            <option value="MEMBER">MEMBER · Cần tài khoản độc giả</option>
+                        </select>
+                    </div>
+                    <button class="admin-button admin-button-primary admin-submit" type="submit" id="btnCreateBook">Tạo sách</button>
+                </form>
+                <p class="admin-message" id="createBookMessage" role="status" aria-live="polite"></p>
+            </section>
+
+            <section class="admin-result-card" id="createdBookResult" hidden aria-live="polite">
+                <div class="admin-result-icon" aria-hidden="true">✓</div>
+                <div class="admin-result-content">
+                    <p class="admin-eyebrow">TẠO TRUYỆN THÀNH CÔNG</p>
+                    <h2 id="createdBookTitle">Sách đã được thêm</h2>
+                    <label for="createdBookId">Mã sách</label>
+                    <div class="admin-id-row">
+                        <input id="createdBookId" type="text" readonly>
+                        <button class="admin-button admin-button-secondary" id="copyBookIdBtn" type="button">Sao chép</button>
+                    </div>
+                    <a class="admin-button admin-button-primary" id="continueToUpload" href="dang-tai-xuat-ban.html">Tiếp tục: tải PDF và xuất bản <span aria-hidden="true">→</span></a>
+                </div>
+            </section>
+        </main>
+    </div>
+    <script src="js/api.config.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/admin.js"></script>
+</body>
+</html>

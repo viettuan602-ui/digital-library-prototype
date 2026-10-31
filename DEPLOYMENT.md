@@ -1,4 +1,4 @@
-# Deploy Digital Library prototype
+# Deploy Neptruyen prototype
 
 This project uses Netlify for the static frontend, Render for the FastAPI service, and Supabase for PostgreSQL and PDF storage. Your computer does not need to stay on after deployment.
 
@@ -25,7 +25,7 @@ The current upload limit is 50 MB per PDF. Supabase recommends resumable uploads
    - `INITIAL_ADMIN_EMAIL` and `INITIAL_ADMIN_PASSWORD`: a new admin account for the hosted prototype.
    - `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`: from the Supabase project settings.
 3. Render generates `SECRET_KEY` through the Blueprint. Never replace it with the demo key.
-4. Wait for `/healthz` to report `{"status":"ok","app":"Digital Library Demo"}`.
+4. Wait for `/healthz` to report `{"status":"ok","app":"Neptruyen"}`.
 
 Render Free web services may sleep after inactivity. The first request after sleep can take about a minute. The database and uploaded PDFs use Supabase rather than Render's temporary filesystem.
 

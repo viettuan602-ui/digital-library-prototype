@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#f8f6f2">
+    <title>Khám phá sách | Neptruyen</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/library.css">
+</head>
+<body class="library-site catalog-page">
+    <header class="site-header">
+        <a class="site-brand" href="trang-chu.html" aria-label="Neptruyen - Trang chủ"><span class="brand-symbol" aria-hidden="true">N</span><span>Neptruyen<span class="brand-period">.</span></span></a>
+        <nav class="main-nav" aria-label="Điều hướng chính">
+            <a class="nav-link" href="trang-chu.html">Trang chủ</a>
+            <a class="nav-link active" href="kham-pha-truyen.html">Khám phá</a>
+            <a class="nav-link" href="#booksList">Thư viện</a>
+        </nav>
+        <div class="site-header-actions">
+            <span id="userRole" class="text-link"></span>
+            <button class="button button-small" id="logoutButton" type="button">Đăng xuất <span aria-hidden="true">↗</span></button>
+        </div>
+        <button class="mobile-menu-button" type="button" aria-label="Mở menu" aria-expanded="false">☰</button>
+    </header>
+
+    <main class="catalog-shell">
+        <section class="catalog-intro">
+            <div><p class="eyebrow"><span class="eyebrow-dot"></span> NEPTRUYEN DIGITAL LIBRARY</p><h1>Chọn một cuốn.<br>Đi thật xa.</h1><p>Khám phá sách trong thư viện và tìm câu chuyện, ý tưởng hay kiến thức mới cho hôm nay.</p></div>
+            <div class="catalog-total" id="catalogTotal">Đang tải thư viện…</div>
+        </section>
+        <section aria-label="Tìm kiếm và lọc sách">
+            <div class="catalog-toolbar">
+                <label class="catalog-search-wrap"><span aria-hidden="true">⌕</span><input class="catalog-search" id="bookSearch" type="search" placeholder="Tìm theo tên sách, tác giả…" autocomplete="off" aria-label="Tìm theo tên sách hoặc tác giả"></label>
+                <select class="catalog-filter" id="categoryFilter" aria-label="Lọc theo thể loại"><option value="">Tất cả thể loại</option></select>
+                <button class="catalog-refresh" id="loadBooksButton" type="button">↻ Làm mới</button>
+            </div>
+        </section>
+        <p class="catalog-message" id="booksMessage" role="status" aria-live="polite"></p>
+        <section id="booksList" class="catalog-grid" aria-label="Danh sách sách"></section>
+    </main>
+
+    <footer class="site-footer"><a class="site-brand" href="trang-chu.html"><span class="brand-symbol">N</span><span>Neptruyen<span class="brand-period">.</span></span></a><p>Đang tìm cuốn sách tiếp theo của bạn.</p><a href="trang-chu.html">Về trang chủ ↗</a></footer>
+
+    <script src="js/api.config.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/books.js?v=3"></script>
+    <script>document.querySelector('.mobile-menu-button').addEventListener('click', function () { const expanded = this.getAttribute('aria-expanded') === 'true'; this.setAttribute('aria-expanded', String(!expanded)); document.querySelector('.main-nav').classList.toggle('nav-open', !expanded); });</script>
+</body>
+</html>

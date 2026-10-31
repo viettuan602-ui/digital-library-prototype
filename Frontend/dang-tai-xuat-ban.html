@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tải nội dung &amp; xuất bản | Neptruyen</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/library.css">
+</head>
+<body class="library-site admin-site">
+    <header class="site-header admin-site-header">
+        <a class="site-brand" href="trang-chu.html"><span class="brand-symbol">N</span><span>Neptruyen<span class="brand-period">.</span></span></a>
+        <nav class="admin-top-links" aria-label="Điều hướng"><a href="quan-tri.html">Khu vực quản trị</a><a href="kham-pha-truyen.html">Thư viện</a></nav>
+        <div class="site-header-actions"><span id="adminUserInfo" class="admin-user-info">Đang tải thông tin tài khoản...</span><button class="button button-small" id="logoutBtn" type="button">Đăng xuất</button></div>
+    </header>
+    <div class="page-container admin-container">
+        <header class="page-header">
+            <div>
+                <a class="admin-back-link" href="quan-tri.html">← Menu quản trị</a>
+                <h1>Tải nội dung &amp; xuất bản sách</h1>
+            </div>
+        </header>
+
+        <main class="admin-narrow admin-workflow">
+            <section class="admin-panel">
+                <p class="admin-eyebrow">BƯỚC 2 · NỘI DUNG TRUYỆN</p>
+                <h2>Tải file PDF lên</h2>
+                <p class="admin-help">Nhập mã sách vừa tạo hoặc dùng mã được lưu gần đây.</p>
+                <form id="uploadPdfForm" class="admin-form">
+                    <div class="admin-field">
+                        <label for="uploadBookId">Mã sách <span>*</span></label>
+                        <input type="text" id="uploadBookId" required placeholder="Dán mã sách vào đây" autocomplete="off">
+                    </div>
+                    <div class="admin-field">
+                        <label for="pdfFileInput">File sách PDF <span>*</span></label>
+                        <input type="file" id="pdfFileInput" accept="application/pdf,.pdf" required>
+                    </div>
+                    <button class="admin-button admin-button-primary admin-submit" type="submit" id="btnUploadPdf">Tải PDF lên</button>
+                </form>
+                <p class="admin-message" id="uploadPdfMessage" role="status" aria-live="polite"></p>
+            </section>
+
+            <section class="admin-panel admin-publish-panel">
+                <p class="admin-eyebrow">BƯỚC 3 · XUẤT BẢN</p>
+                <h2>Xuất bản sách</h2>
+                <p class="admin-help">Chỉ xuất bản sau khi PDF tải lên thành công. Độc giả có thể đọc sách khi trạng thái là PUBLISHED.</p>
+                <form id="changeStatusForm" class="admin-form">
+                    <div class="admin-field">
+                        <label for="statusBookId">Mã sách <span>*</span></label>
+                        <input type="text" id="statusBookId" required placeholder="Tự điền sau khi nhập mã sách phía trên" autocomplete="off">
+                    </div>
+                    <button class="admin-button admin-button-publish admin-submit" type="submit" id="btnChangeStatus">Xuất bản sách</button>
+                </form>
+                <p class="admin-message" id="changeStatusMessage" role="status" aria-live="polite"></p>
+            </section>
+        </main>
+    </div>
+    <script src="js/api.config.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/admin.js"></script>
+</body>
+</html>

@@ -2,6 +2,7 @@ import uuid
 import datetime
 import os
 import io
+import json
 from typing import Optional, List
 from enum import Enum
 from contextlib import asynccontextmanager
@@ -18,8 +19,8 @@ from fastapi.responses import FileResponse, RedirectResponse
 from pathlib import Path
 from urllib.parse import urljoin
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
-from pydantic import BaseModel, EmailStr, ConfigDict
-from sqlalchemy import create_engine, Column, String, Integer, DateTime
+from pydantic import BaseModel, EmailStr, ConfigDict, Field, field_validator, model_validator
+from sqlalchemy import create_engine, Column, String, Integer, DateTime, or_
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
 from pwdlib import PasswordHash
 from jose import JWTError, jwt
@@ -131,11 +132,54 @@ class TokenResponse(BaseModel):
     role: str
 
 
+def parse_categories(value) -> List[str]:
+    """Read category JSON written by newer clients and plain text from older rows."""
+    if value is None:
+        return []
+    if isinstance(value, (list, tuple, set)):
+        source = value
+    else:
+        text = str(value).strip()
+        if not text:
+            return []
+        try:
+            decoded = json.loads(text)
+        except (TypeError, json.JSONDecodeError):
+            decoded = text.split(",")
+        source = decoded if isinstance(decoded, (list, tuple, set)) else [decoded]
+
+    categories = []
+    seen = set()
+    for item in source:
+        name = str(item).strip()
+        key = name.casefold()
+        if name and key not in seen:
+            categories.append(name)
+            seen.add(key)
+    return categories
+
+
 class BookCreate(BaseModel):
     title: str
     author: str
-    category: str
+    categories: List[str] = Field(default_factory=list, min_length=1)
+    # Keep accepting the old single-category request during the frontend transition.
+    category: Optional[str] = None
     access_level: Optional[AccessLevel] = AccessLevel.MEMBER
+
+    @model_validator(mode="before")
+    @classmethod
+    def accept_legacy_category(cls, values):
+        if isinstance(values, dict):
+            values = values.copy()
+            if not values.get("categories") and values.get("category"):
+                values["categories"] = parse_categories(values["category"])
+        return values
+
+    @field_validator("categories", mode="before")
+    @classmethod
+    def clean_categories(cls, value):
+        return parse_categories(value)
 
 
 class BookOut(BaseModel):
@@ -143,10 +187,28 @@ class BookOut(BaseModel):
     title: str
     author: str
     category: str
+    categories: List[str] = Field(default_factory=list)
     status: str
     access_level: str
+    created_at: Optional[datetime.datetime] = None
 
     model_config = ConfigDict(from_attributes=True)
+
+    @model_validator(mode="before")
+    @classmethod
+    def expose_category_list(cls, value):
+        if isinstance(value, dict):
+            data = value.copy()
+        else:
+            data = {
+                field: getattr(value, field, None)
+                for field in ("id", "title", "author", "category", "status", "access_level", "created_at")
+            }
+        categories = parse_categories(data.get("categories") or data.get("category"))
+        data["categories"] = categories
+        # Preserve the original string field for existing frontend clients.
+        data["category"] = ", ".join(categories)
+        return data
 
 
 # ==========================================
@@ -257,7 +319,7 @@ async def lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(title="Digital Library API Demo", version="1.0", lifespan=lifespan)
+app = FastAPI(title="Neptruyen API", version="1.0", lifespan=lifespan)
 configured_origins = [
     "http://127.0.0.1:5500",
     "http://localhost:5500"
@@ -330,14 +392,18 @@ def list_books(
     if q:
         query = query.filter(Book.title.contains(q) | Book.author.contains(q))
     if category:
-        query = query.filter(Book.category == category)
+        category_json = json.dumps(category, ensure_ascii=False)
+        query = query.filter(or_(
+            Book.category == category,
+            Book.category.contains(category_json)
+        ))
 
     total = query.count()
     offset = (page - 1) * page_size
     books = query.order_by(Book.id).offset(offset).limit(page_size).all()
 
     return {
-        "items": books,
+        "items": [BookOut.model_validate(book).model_dump() for book in books],
         "meta": {
             "page": page,
             "page_size": page_size,
@@ -398,7 +464,7 @@ def create_book(
     book = Book(
         title=book_in.title,
         author=book_in.author,
-        category=book_in.category,
+        category=json.dumps(book_in.categories, ensure_ascii=False),
         access_level=book_in.access_level.value,
         status=BookStatus.DRAFT.value
     )
@@ -514,7 +580,7 @@ def update_book_status(
         if not book.file_path:
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail="Sách chưa có tệp nội dung, không thể xuất bản (BR-40)"
+                detail="Truyện chưa có tệp nội dung, không thể xuất bản (BR-40)"
             )
         book.status = BookStatus.PUBLISHED.value
 
@@ -579,7 +645,7 @@ def stream_book(
     if not book:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Không tìm thấy sách hoặc sách chưa được xuất bản"
+            detail="Không tìm thấy truyện hoặc truyện chưa được xuất bản"
         )
 
     # 5. Kiểm tra file
@@ -635,7 +701,7 @@ def stream_book(
 
 @app.get("/healthz", tags=["System"])
 def health_check():
-    return {"status": "ok", "app": "Digital Library Demo"}
+    return {"status": "ok", "app": "Neptruyen"}
 
 
 if __name__ == "__main__":

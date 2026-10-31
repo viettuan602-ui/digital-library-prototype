@@ -43,7 +43,7 @@ async function handleRegister(event) {
         messageEl.textContent = "Đăng ký thành công! Đang chuyển đến trang đăng nhập...";
 
         // Dùng URL tương đối theo trang hiện tại, rồi chuyển ngay khi API đã xác nhận thành công.
-        window.location.replace(new URL("./login.html", window.location.href).href);
+        window.location.replace(new URL("./dang-nhap.html", window.location.href).href);
     } catch (error) {
         messageEl.style.color = "red";
         messageEl.textContent = `Lỗi: ${error.message}`;

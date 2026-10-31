@@ -15,8 +15,8 @@ let zoom = 100;
 let sessionUrl = "";
 
 const detailUrl = bookId
-    ? `reader.html?id=${encodeURIComponent(bookId)}`
-    : "books.html";
+    ? `chi-tiet-truyen.html?id=${encodeURIComponent(bookId)}`
+    : "kham-pha-truyen.html";
 document.getElementById("detailsLink").href = detailUrl;
 document.getElementById("backToDetails").href = detailUrl;
 
@@ -37,7 +37,7 @@ function updateZoom() {
 
 async function openBook() {
     if (!bookId) {
-        showError("Thiếu mã sách. Hãy mở sách từ danh sách trong thư viện.");
+        showError("Thiếu mã sách. Hãy mở sách từ thư viện Neptruyen.");
         return;
     }
 
@@ -58,7 +58,7 @@ async function openBook() {
         bookCategory.textContent = book.category;
         bookAccess.textContent = book.access_level === "MEMBER" ? "Thành viên" : "Miễn phí";
         readerHeading.textContent = book.title;
-        document.title = `${book.title} | Digital Library`;
+        document.title = `${book.title} | Neptruyen`;
 
         readerStatus.textContent = "Đang tạo phiên đọc an toàn…";
         const headers = {};
@@ -82,7 +82,7 @@ async function openBook() {
         pdfFrameWrap.hidden = false;
         readerStatus.hidden = true;
     } catch (error) {
-        showError(error.message || "Không thể kết nối đến máy chủ thư viện.");
+        showError(error.message || "Không thể kết nối đến máy chủ Neptruyen.");
         console.error("Open book error:", error);
     }
 }

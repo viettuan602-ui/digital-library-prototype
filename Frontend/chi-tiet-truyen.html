@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#f8f6f2">
+    <title>Chi tiết sách | Neptruyen</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/library.css">
+</head>
+<body class="library-site detail-page">
+    <header class="site-header">
+        <a class="site-brand" href="trang-chu.html" aria-label="Neptruyen - Trang chủ"><span class="brand-symbol" aria-hidden="true">N</span><span>Neptruyen<span class="brand-period">.</span></span></a>
+        <nav class="main-nav" aria-label="Điều hướng chính"><a class="nav-link" href="trang-chu.html">Trang chủ</a><a class="nav-link active" href="kham-pha-truyen.html">Khám phá</a></nav>
+        <div class="site-header-actions"><span id="userRole" class="text-link"></span><a class="text-link" href="kham-pha-truyen.html">Thư viện ↗</a></div>
+        <button class="mobile-menu-button" type="button" aria-label="Mở menu" aria-expanded="false">☰</button>
+    </header>
+    <main class="detail-shell">
+        <div class="detail-topline"><a class="detail-back" href="kham-pha-truyen.html">← Trở lại thư viện</a><span class="eyebrow">THÔNG TIN SÁCH</span></div>
+        <p id="bookMessage" class="detail-status" role="status" aria-live="polite">Đang tải thông tin sách…</p>
+        <div id="bookDetail"></div>
+    </main>
+    <footer class="site-footer"><a class="site-brand" href="trang-chu.html"><span class="brand-symbol">N</span><span>Neptruyen<span class="brand-period">.</span></span></a><p>Một cuốn sách hay luôn đáng để quay lại.</p><a href="kham-pha-truyen.html">Khám phá thêm ↗</a></footer>
+    <script src="js/api.config.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/books.js?v=3"></script>
+    <script>document.querySelector('.mobile-menu-button').addEventListener('click', function () { const expanded = this.getAttribute('aria-expanded') === 'true'; this.setAttribute('aria-expanded', String(!expanded)); document.querySelector('.main-nav').classList.toggle('nav-open', !expanded); });</script>
+</body>
+</html>

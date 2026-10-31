@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quản trị nội dung | Neptruyen</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/library.css">
+</head>
+<body class="library-site admin-site">
+    <header class="site-header admin-site-header">
+        <a class="site-brand" href="trang-chu.html"><span class="brand-symbol">N</span><span>Neptruyen<span class="brand-period">.</span></span></a>
+        <nav class="admin-top-links" aria-label="Điều hướng"><a href="trang-chu.html">Trang chủ</a><a href="kham-pha-truyen.html">Thư viện</a></nav>
+        <div class="site-header-actions"><span id="adminUserInfo" class="admin-user-info">Đang tải thông tin tài khoản...</span><button class="button button-small" id="logoutBtn" type="button">Đăng xuất</button></div>
+    </header>
+    <div class="page-container admin-container">
+        <header class="page-header">
+            <div>
+                <h1>Neptruyen · Quản lý sách</h1>
+            </div>
+        </header>
+
+        <main>
+            <section class="admin-intro">
+                <p class="admin-eyebrow">KHU VỰC QUẢN TRỊ</p>
+                <h2>Xin chào, quản trị viên</h2>
+                <p>Chọn chức năng để quản lý sách trong thư viện Neptruyen.</p>
+            </section>
+
+            <section class="admin-menu-grid" aria-label="Chức năng quản trị">
+                <a class="admin-menu-card" href="tao-truyen.html">
+                    <span class="admin-menu-number">01</span>
+                    <h3>Tạo sách mới</h3>
+                    <p>Thêm thông tin sách và nhận mã để tiếp tục tải nội dung.</p>
+                    <span class="admin-menu-link">Mở trang tạo sách <span aria-hidden="true">→</span></span>
+                </a>
+                <a class="admin-menu-card admin-menu-card-accent" href="dang-tai-xuat-ban.html">
+                    <span class="admin-menu-number">02</span>
+                    <h3>Tải nội dung &amp; xuất bản sách</h3>
+                    <p>Tải file PDF theo mã sách, sau đó xuất bản lên Neptruyen.</p>
+                    <span class="admin-menu-link">Mở trang đăng tải <span aria-hidden="true">→</span></span>
+                </a>
+            </section>
+
+            <section class="admin-recent-card" id="recentBookCard" hidden>
+                <div>
+                    <p class="admin-eyebrow">TRUYỆN VỪA TẠO</p>
+                    <h3 id="recentBookTitle">Sách vừa tạo</h3>
+                    <code id="recentBookId"></code>
+                </div>
+                <a class="admin-button admin-button-primary" id="continuePublishLink" href="dang-tai-xuat-ban.html">Tiếp tục đăng tải</a>
+            </section>
+        </main>
+    </div>
+    <script src="js/api.config.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/admin.js"></script>
+</body>
+</html>

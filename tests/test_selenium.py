@@ -15,7 +15,7 @@ def create_driver():
 def test_open_login_page():
     driver = create_driver()
 
-    driver.get("http://127.0.0.1:5500/login.html")
+    driver.get("http://127.0.0.1:5500/dang-nhap.html")
 
     print("Title:", driver.title)
 
@@ -23,7 +23,7 @@ def test_open_login_page():
 def test_login_interface():
     driver = create_driver()
     try:
-        driver.get("http://127.0.0.1:5500/login.html")
+        driver.get("http://127.0.0.1:5500/dang-nhap.html")
 
         # Khớp chính xác id='email', id='password' và class='btn-login'
         email_input = driver.find_element(By.ID, "email")
@@ -40,7 +40,7 @@ def test_login_interface():
 def test_login_success():
     driver = create_driver()
     try:
-        driver.get("http://127.0.0.1:5500/login.html")
+        driver.get("http://127.0.0.1:5500/dang-nhap.html")
 
         # 1. Nhập thông tin tài khoản hợp lệ (hãy thay bằng email & pass thật của bạn)
         driver.find_element(By.ID, "email").send_keys("admin@example.com")
@@ -49,14 +49,14 @@ def test_login_success():
         # 2. Click nút đăng nhập
         driver.find_element(By.CSS_SELECTOR, "button.btn-login").click()
 
-        # 3. Chờ tối đa 5 giây cho đến khi URL chuyển sang books.html
+        # 3. Chờ tối đa 5 giây cho đến khi URL chuyển sang kham-pha-truyen.html
         WebDriverWait(driver, 5).until(
-            EC.url_contains("books.html")
+            EC.url_contains("kham-pha-truyen.html")
         )
 
         # 4. Kiểm tra URL hiện tại
-        assert "books.html" in driver.current_url
-        print("\n[OK] Đăng nhập thành công và đã điều hướng sang books.html!")
+        assert "kham-pha-truyen.html" in driver.current_url
+        print("\n[OK] Đăng nhập thành công và đã điều hướng sang kham-pha-truyen.html!")
 
     finally:
         driver.quit()
@@ -65,14 +65,14 @@ def test_login_success():
 def test_admin_role_displayed():
     driver = create_driver()
     try:
-        driver.get("http://127.0.0.1:5500/login.html")
+        driver.get("http://127.0.0.1:5500/dang-nhap.html")
 
         driver.find_element(By.ID, "email").send_keys("admin@example.com")
         driver.find_element(By.ID, "password").send_keys("YOUR_PASSWORD")
         driver.find_element(By.CSS_SELECTOR, "button.btn-login").click()
 
         WebDriverWait(driver, 5).until(
-            EC.url_changes("http://127.0.0.1:5500/login.html")
+            EC.url_changes("http://127.0.0.1:5500/dang-nhap.html")
         )
 
         stored_role = driver.execute_script("return localStorage.getItem('user_role');")
@@ -89,14 +89,14 @@ def test_admin_role_displayed():
 def test_books_are_displayed():
     driver = create_driver()
     try:
-        driver.get("http://127.0.0.1:5500/login.html")
+        driver.get("http://127.0.0.1:5500/dang-nhap.html")
 
         driver.find_element(By.ID, "email").send_keys("admin@example.com")
         driver.find_element(By.ID, "password").send_keys("YOUR_PASSWORD")
         driver.find_element(By.CSS_SELECTOR, "button.btn-login").click()
 
         WebDriverWait(driver, 5).until(
-            EC.url_contains("books.html")
+            EC.url_contains("kham-pha-truyen.html")
         )
         books_list = WebDriverWait(driver, 5).until(
             EC.visibility_of_element_located((By.ID, "booksList"))
@@ -115,7 +115,7 @@ def test_books_are_displayed():
 def test_login_empty_fields():
     driver = create_driver()
     try:
-        driver.get("http://127.0.0.1:5500/login.html")
+        driver.get("http://127.0.0.1:5500/dang-nhap.html")
 
         driver.find_element(By.ID, "email").clear()
         driver.find_element(By.ID, "password").clear()
@@ -124,7 +124,7 @@ def test_login_empty_fields():
 
         time.sleep(1)
 
-        assert "login.html" in driver.current_url
+        assert "dang-nhap.html" in driver.current_url
 
         email_elem = driver.find_element(By.ID, "email")
         is_valid = driver.execute_script("return arguments[0].checkValidity();", email_elem)
@@ -138,14 +138,14 @@ def test_login_empty_fields():
 def test_access_without_login():
     driver = create_driver()
     try:
-        driver.get("http://127.0.0.1:5500/index.html")
+        driver.get("http://127.0.0.1:5500/trang-chu.html")
         driver.execute_script("localStorage.clear();")
 
-        driver.get("http://127.0.0.1:5500/books.html")
+        driver.get("http://127.0.0.1:5500/kham-pha-truyen.html")
 
         time.sleep(2)
 
-        assert "login.html" in driver.current_url, \
+        assert "dang-nhap.html" in driver.current_url, \
             f"Bảo vệ thất bại: Vẫn ở lại '{driver.current_url}' dù chưa đăng nhập!"
 
         print("\n[OK] ST06 Passed: Hệ thống đã chặn và đẩy về trang đăng nhập.")
@@ -154,14 +154,14 @@ def test_access_without_login():
 def test_book_detail():
     driver = create_driver()
     try:
-        driver.get("http://127.0.0.1:5500/login.html")
+        driver.get("http://127.0.0.1:5500/dang-nhap.html")
 
         driver.find_element(By.ID, "email").send_keys("admin@example.com")
         driver.find_element(By.ID, "password").send_keys("YOUR_PASSWORD")
         driver.find_element(By.CSS_SELECTOR, "button.btn-login").click()
 
         WebDriverWait(driver, 5).until(
-            EC.url_contains("books.html")
+            EC.url_contains("kham-pha-truyen.html")
         )
 
         detail_button = WebDriverWait(driver, 5).until(
@@ -170,21 +170,21 @@ def test_book_detail():
         detail_button.click()
 
         WebDriverWait(driver, 5).until(
-            EC.url_contains("reader.html")
+            EC.url_contains("chi-tiet-truyen.html")
         )
 
         WebDriverWait(driver, 5).until(
             EC.visibility_of_element_located((By.ID, "bookDetail"))
         )
 
-        assert "reader.html" in driver.current_url
+        assert "chi-tiet-truyen.html" in driver.current_url
         print("\n[OK] ST07 Passed: Điều hướng độc lập tới trang chi tiết sách thành công.")
     finally:
         driver.quit()
 def test_invalid_book_id():
     driver = create_driver()
     try:
-        driver.get("http://127.0.0.1:5500/reader.html?id=999999")
+        driver.get("http://127.0.0.1:5500/chi-tiet-truyen.html?id=999999")
 
         message_elem = WebDriverWait(driver, 5).until(
             EC.visibility_of_element_located((By.ID, "bookMessage"))
@@ -205,7 +205,7 @@ from selenium.webdriver.support import expected_conditions as EC
 def test_login_wrong_password():
     driver = create_driver()
     try:
-        driver.get("http://127.0.0.1:5500/login.html")
+        driver.get("http://127.0.0.1:5500/dang-nhap.html")
 
         driver.find_element(By.ID, "email").send_keys("admin@example.com")
         driver.find_element(By.ID, "password").send_keys("sai_mat_khau_123456")
@@ -218,7 +218,7 @@ def test_login_wrong_password():
 
         WebDriverWait(driver, 5).until(lambda d: message_elem.text.strip() != "")
 
-        assert "login.html" in driver.current_url
+        assert "dang-nhap.html" in driver.current_url
         assert message_elem.is_displayed()
         print(f"\n[OK] ST09 Passed: Bắt lỗi đăng nhập thành công với thông báo: '{message_elem.text}'.")
     finally:
@@ -226,14 +226,14 @@ def test_login_wrong_password():
 def test_logout():
     driver = create_driver()
     try:
-        driver.get("http://127.0.0.1:5500/login.html")
+        driver.get("http://127.0.0.1:5500/dang-nhap.html")
 
         driver.find_element(By.ID, "email").send_keys("admin@example.com")
         driver.find_element(By.ID, "password").send_keys("YOUR_PASSWORD")
         driver.find_element(By.CSS_SELECTOR, "button.btn-login").click()
 
         WebDriverWait(driver, 5).until(
-            EC.url_changes("http://127.0.0.1:5500/login.html")
+            EC.url_changes("http://127.0.0.1:5500/dang-nhap.html")
         )
 
 
@@ -243,7 +243,7 @@ def test_logout():
         logout_btn.click()
 
         WebDriverWait(driver, 5).until(
-            EC.url_contains("login.html")
+            EC.url_contains("dang-nhap.html")
         )
 
         token = driver.execute_script("return localStorage.getItem('access_token');")
@@ -251,7 +251,7 @@ def test_logout():
 
         assert token is None or token == ""
         assert role is None or role == ""
-        assert "login.html" in driver.current_url
+        assert "dang-nhap.html" in driver.current_url
 
         print("\n[OK] ST10 Passed: Đăng xuất an toàn, dữ liệu session đã được dọn sạch.")
     finally:

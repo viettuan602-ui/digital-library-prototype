@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#f8f6f2">
+    <title>Neptruyen | Thư viện số dành cho bạn</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/library.css">
+</head>
+<body class="library-site home-page">
+    <header class="site-header">
+        <a class="site-brand" href="trang-chu.html" aria-label="Neptruyen - Trang chủ">
+            <span class="brand-symbol" aria-hidden="true">N</span>
+            <span>Neptruyen<span class="brand-period">.</span></span>
+        </a>
+        <nav class="main-nav" aria-label="Điều hướng chính">
+            <a class="nav-link active" href="trang-chu.html">Trang chủ</a>
+            <a class="nav-link" href="kham-pha-truyen.html">Khám phá</a>
+            <a class="nav-link" href="kham-pha-truyen.html#booksList">Thư viện</a>
+            <a class="nav-link nav-auth-link" href="dang-nhap.html">Đăng nhập</a>
+            <a class="nav-link nav-auth-link" href="dang-ky.html">Tạo tài khoản</a>
+        </nav>
+        <div class="site-header-actions" id="authActions">
+            <a class="text-link" href="dang-nhap.html">Đăng nhập</a>
+            <a class="button button-small" href="kham-pha-truyen.html">Khám phá truyện <span aria-hidden="true">↗</span></a>
+        </div>
+        <button class="mobile-menu-button" type="button" aria-label="Mở menu" aria-expanded="false">☰</button>
+    </header>
+
+    <main>
+        <section class="home-hero">
+            <div class="hero-copy">
+                <p class="eyebrow"><span class="eyebrow-dot"></span> MỞ RA MỘT THẾ GIỚI MỚI</p>
+                <h1 class="hero-title"><span class="hero-title-line">Mỗi cuốn sách</span><span class="hero-title-line">là một <em>chuyến đi.</em></span></h1>
+                <p class="hero-description">Tìm cuốn sách tiếp theo khiến bạn muốn đọc thêm một trang nữa. Khám phá thư viện số được tuyển chọn dành riêng cho bạn.</p>
+                <div class="hero-actions">
+                    <a class="button" href="kham-pha-truyen.html">Khám phá thư viện <span aria-hidden="true">→</span></a>
+                    <a class="button button-quiet" href="dang-ky.html">Tạo tài khoản</a>
+                </div>
+                <div class="hero-note"><span class="note-check" aria-hidden="true">✓</span> Đọc theo cách của bạn, bất cứ lúc nào</div>
+            </div>
+            <div class="hero-art" aria-label="Minh họa những cuốn sách trong thư viện">
+                <div class="art-glow"></div>
+                <div class="floating-note note-one">MỘT THẾ GIỚI<br>ĐANG CHỜ BẠN</div>
+                <div class="book-illustration book-back"><span>THE ART OF<br>IMAGINATION</span><i>✳</i></div>
+                <div class="book-illustration book-front"><small>NEPTRUYEN LIBRARY</small><b>NHỮNG<br>TRANG<br><em>TIẾP THEO</em></b><span class="book-orbit">✳</span><small class="book-edition">VOL. 01 · 2026</small></div>
+                <div class="floating-note note-two"><span>✦</span> YOUR NEXT<br>FAVORITE READ</div>
+                <div class="art-shadow"></div>
+            </div>
+        </section>
+
+        <section class="feature-strip" aria-label="Điểm nổi bật">
+            <div><span class="feature-icon">⌕</span><span><strong>Dễ khám phá</strong><small>Tìm nội dung hợp gu</small></span></div>
+            <div><span class="feature-icon">▤</span><span><strong>Thư viện gọn gàng</strong><small>Thông tin rõ ràng, dễ đọc</small></span></div>
+            <div><span class="feature-icon">↗</span><span><strong>Đọc mọi lúc</strong><small>Tiếp tục trên thiết bị của bạn</small></span></div>
+        </section>
+
+        <section class="home-discover">
+            <div class="section-heading">
+                <div><p class="eyebrow">BẮT ĐẦU TỪ ĐÂU?</p><h2>Thế giới sách đang đợi bạn</h2></div>
+                <a class="section-link" href="kham-pha-truyen.html">Xem toàn bộ thư viện <span aria-hidden="true">→</span></a>
+            </div>
+            <div class="category-tiles">
+                <a class="category-tile tile-story" href="kham-pha-truyen.html"><span class="tile-number">01 / STORIES</span><strong>Văn học<br>& câu chuyện</strong><span class="tile-arrow">↗</span></a>
+                <a class="category-tile tile-knowledge" href="kham-pha-truyen.html"><span class="tile-number">02 / IDEAS</span><strong>Tri thức<br>& khám phá</strong><span class="tile-arrow">↗</span></a>
+                <a class="category-tile tile-archive" href="kham-pha-truyen.html"><span class="tile-number">03 / COLLECTION</span><strong>Tất cả<br>đang có</strong><span class="tile-arrow">↗</span></a>
+            </div>
+        </section>
+    </main>
+
+    <footer class="site-footer"><a class="site-brand" href="trang-chu.html"><span class="brand-symbol">N</span><span>Neptruyen<span class="brand-period">.</span></span></a><p>Một góc nhỏ để tìm thấy cuốn sách tiếp theo.</p><a href="kham-pha-truyen.html">Bắt đầu khám phá ↗</a></footer>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const token = localStorage.getItem("access_token");
+            const role = localStorage.getItem("user_role");
+            const actionContainer = document.getElementById("authActions");
+            if (token && role) {
+                document.querySelectorAll(".nav-auth-link").forEach(link => { link.hidden = true; });
+                const adminLink = role === "ADMIN" || role === "MANAGER"
+                    ? '<a class="text-link" href="quan-tri.html">Quản trị</a>' : '';
+                actionContainer.innerHTML = `${adminLink}<a class="button button-small" href="kham-pha-truyen.html">Khám phá truyện <span aria-hidden="true">↗</span></a>`;
+            }
+            const menuButton = document.querySelector(".mobile-menu-button");
+            menuButton.addEventListener("click", function () {
+                const expanded = this.getAttribute("aria-expanded") === "true";
+                this.setAttribute("aria-expanded", String(!expanded));
+                document.querySelector(".main-nav").classList.toggle("nav-open", !expanded);
+            });
+        });
+    </script>
+</body>
+</html>

@@ -4,7 +4,7 @@ function getSavedBook() {
     try {
         return JSON.parse(sessionStorage.getItem(ADMIN_BOOK_KEY) || "null");
     } catch (error) {
-        console.warn("Không thể đọc ID sách đã lưu:", error);
+        console.warn("Không thể đọc mã truyện đã lưu:", error);
         return null;
     }
 }
@@ -46,7 +46,7 @@ function handleUnauthorized(response) {
     localStorage.removeItem("access_token");
     localStorage.removeItem("user_role");
     alert("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại!");
-    window.location.replace("login.html");
+    window.location.replace("dang-nhap.html");
     return true;
 }
 
@@ -56,11 +56,11 @@ function handleUnauthorized(response) {
     const role = localStorage.getItem("user_role");
 
     if (!token) {
-        window.location.replace("login.html");
+        window.location.replace("dang-nhap.html");
         return;
     }
     if (role !== "ADMIN" && role !== "MANAGER") {
-        window.location.replace("books.html");
+        window.location.replace("kham-pha-truyen.html");
         return;
     }
 
@@ -74,7 +74,7 @@ if (logoutBtn) {
         localStorage.removeItem("access_token");
         localStorage.removeItem("user_role");
         sessionStorage.removeItem(ADMIN_BOOK_KEY);
-        window.location.replace("login.html");
+        window.location.replace("dang-nhap.html");
     });
 }
 
@@ -87,7 +87,7 @@ if (recentBookCard) {
         document.getElementById("recentBookTitle").textContent = savedBook.title;
         document.getElementById("recentBookId").textContent = savedBook.id;
         document.getElementById("continuePublishLink").href =
-            `admin-publish.html?id=${encodeURIComponent(savedBook.id)}`;
+            `dang-tai-xuat-ban.html?id=${encodeURIComponent(savedBook.id)}`;
     }
 }
 
@@ -100,12 +100,55 @@ if (createBookForm) {
     const continueLink = document.getElementById("continueToUpload");
     const message = document.getElementById("createBookMessage");
     const submitBtn = document.getElementById("btnCreateBook");
+    const categoryPicker = document.getElementById("categoryPicker");
+    const categoryChecks = [...document.querySelectorAll('input[name="bookCategory"]')];
+    const categoryPickerSummary = document.getElementById("categoryPickerSummary");
+    const selectedCategoryChips = document.getElementById("selectedCategoryChips");
+    const customCategoryWrap = document.getElementById("customCategoryWrap");
+    const customCategoryText = document.getElementById("customCategoryText");
+    const categorySelectionError = document.getElementById("categorySelectionError");
+
+    function getSelectedCategories() {
+        const selected = categoryChecks
+            .filter(input => input.checked && input.value !== "Khác")
+            .map(input => input.value);
+        const otherSelected = categoryChecks.some(input => input.checked && input.value === "Khác");
+        if (otherSelected && customCategoryText && customCategoryText.value.trim()) {
+            selected.push(...customCategoryText.value.split(",").map(value => value.trim()).filter(Boolean));
+        }
+        return [...new Map(selected.map(value => [value.toLocaleLowerCase("vi"), value])).values()];
+    }
+
+    function refreshCategoryPicker() {
+        const otherSelected = categoryChecks.some(input => input.checked && input.value === "Khác");
+        if (customCategoryWrap) customCategoryWrap.hidden = !otherSelected;
+        const categories = getSelectedCategories();
+        if (categoryPickerSummary) {
+            const summaryText = categories.length
+                ? `Đã chọn ${categories.length} thể loại`
+                : "Chọn một hoặc nhiều thể loại";
+            categoryPickerSummary.firstChild.textContent = summaryText;
+        }
+        if (selectedCategoryChips) {
+            selectedCategoryChips.replaceChildren();
+            categories.forEach(category => {
+                const chip = document.createElement("span");
+                chip.className = "selected-category-chip";
+                chip.textContent = category;
+                selectedCategoryChips.append(chip);
+            });
+        }
+        if (categories.length && categorySelectionError) categorySelectionError.hidden = true;
+    }
+
+    categoryChecks.forEach(input => input.addEventListener("change", refreshCategoryPicker));
+    if (customCategoryText) customCategoryText.addEventListener("input", refreshCategoryPicker);
 
     function showCreatedBook(book) {
         if (!book || !book.id) return;
         idInput.value = String(book.id);
         titleOutput.textContent = book.title || "Sách vừa tạo";
-        continueLink.href = `admin-publish.html?id=${encodeURIComponent(book.id)}`;
+        continueLink.href = `dang-tai-xuat-ban.html?id=${encodeURIComponent(book.id)}`;
         resultCard.hidden = false;
     }
 
@@ -115,10 +158,18 @@ if (createBookForm) {
         event.preventDefault();
         if (submitBtn.disabled) return;
 
+        const categories = getSelectedCategories();
+        if (!categories.length) {
+            if (categorySelectionError) categorySelectionError.hidden = false;
+            if (categoryPicker) categoryPicker.open = true;
+            setMessage(message, "Vui lòng chọn ít nhất một thể loại.", "error");
+            return;
+        }
+
         const payload = {
             title: document.getElementById("bookTitle").value.trim(),
             author: document.getElementById("bookAuthor").value.trim(),
-            category: document.getElementById("bookCategory").value.trim(),
+            categories,
             access_level: document.getElementById("bookAccessLevel").value
         };
         const token = localStorage.getItem("access_token");
@@ -142,13 +193,15 @@ if (createBookForm) {
                 throw new Error(getErrorMessage(data, "Không thể tạo sách."));
             }
             if (data.id == null) {
-                throw new Error("API tạo sách thành công nhưng không trả về ID.");
+                throw new Error("Tạo sách thành công nhưng hệ thống không trả về mã sách.");
             }
 
             saveBook(data);
             showCreatedBook(data);
             createBookForm.reset();
-            setMessage(message, "Đã tạo sách thành công. ID được lưu trong phiên này.", "success");
+            if (categoryPicker) categoryPicker.open = false;
+            refreshCategoryPicker();
+            setMessage(message, "Đã tạo sách thành công. Mã sách được lưu trong phiên này.", "success");
             resultCard.scrollIntoView({ behavior: "smooth", block: "nearest" });
         } catch (error) {
             setMessage(message, `Lỗi: ${error.message}`, "error");
@@ -203,7 +256,7 @@ if (publishPage) {
         const file = fileInput.files && fileInput.files[0];
 
         if (!bookId) {
-            setMessage(message, "Vui lòng nhập ID sách.", "error");
+            setMessage(message, "Vui lòng nhập mã sách.", "error");
             return;
         }
         if (!file) {
@@ -236,7 +289,7 @@ if (publishPage) {
             }
 
             statusBookIdInput.value = bookId;
-            setMessage(message, `Upload PDF thành công cho sách ID ${bookId}. Bạn có thể xuất bản ở bước tiếp theo.`, "success");
+            setMessage(message, `Tải PDF thành công cho sách ${bookId}. Bạn có thể xuất bản ở bước tiếp theo.`, "success");
             fileInput.value = "";
         } catch (error) {
             setMessage(message, `Lỗi: ${error.message}`, "error");
@@ -254,7 +307,7 @@ if (publishPage) {
         const bookId = statusBookIdInput.value.trim();
 
         if (!bookId) {
-            setMessage(message, "Vui lòng nhập ID sách.", "error");
+            setMessage(message, "Vui lòng nhập mã sách.", "error");
             return;
         }
 
@@ -275,7 +328,7 @@ if (publishPage) {
                 throw new Error(getErrorMessage(data, "Không thể xuất bản sách."));
             }
 
-            setMessage(message, data.message || `Đã xuất bản sách ID ${bookId}.`, "success");
+            setMessage(message, data.message || `Đã xuất bản sách ${bookId}.`, "success");
         } catch (error) {
             setMessage(message, `Lỗi: ${error.message}`, "error");
             console.error("Publish book error:", error);
