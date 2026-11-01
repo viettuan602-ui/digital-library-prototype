@@ -4,6 +4,8 @@ import os
 import io
 import json
 import logging
+import shutil
+import tempfile
 from typing import Optional, List
 from enum import Enum
 from contextlib import asynccontextmanager
@@ -508,6 +510,7 @@ def upload_book_file(
         )
 
     try:
+        temp_upload_path = None
         file.file.seek(0, os.SEEK_END)
         file_size = file.file.tell()
         file.file.seek(0)
@@ -521,9 +524,18 @@ def upload_book_file(
         safe_filename = f"{book.id}.pdf"
         if supabase_storage:
             storage_path = safe_filename
+            with tempfile.NamedTemporaryFile(
+                prefix="book-upload-",
+                suffix=".pdf",
+                dir=STORAGE_DIR,
+                delete=False
+            ) as temp_file:
+                temp_upload_path = Path(temp_file.name)
+                shutil.copyfileobj(file.file, temp_file)
+
             supabase_storage.storage.from_(SUPABASE_STORAGE_BUCKET).upload(
                 path=storage_path,
-                file=file.file,
+                file=str(temp_upload_path),
                 file_options={
                     "content-type": "application/pdf",
                     "upsert": "true"
@@ -564,6 +576,8 @@ def upload_book_file(
         )
 
     finally:
+        if temp_upload_path and temp_upload_path.exists():
+            temp_upload_path.unlink()
         file.file.close()
 
 @app.patch("/api/v1/admin/books/{book_id}/status", tags=["Admin - Books"])
