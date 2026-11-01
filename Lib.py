@@ -3,6 +3,7 @@ import datetime
 import os
 import io
 import json
+import logging
 from typing import Optional, List
 from enum import Enum
 from contextlib import asynccontextmanager
@@ -24,6 +25,8 @@ from sqlalchemy import create_engine, Column, String, Integer, DateTime, or_
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
 from pwdlib import PasswordHash
 from jose import JWTError, jwt
+
+logger = logging.getLogger(__name__)
 
 try:
     from dotenv import load_dotenv
@@ -548,13 +551,13 @@ def upload_book_file(
     except HTTPException:
         db.rollback()
         raise
-    except Exception as error:
+    except Exception:
         db.rollback()
         if not supabase_storage:
             local_path = STORAGE_DIR / f"{book.id}.pdf"
             if local_path.exists():
                 local_path.unlink()
-        print(f"Book upload failed: {error}")
+        logger.exception("Book upload failed (book_id=%s)", book.id)
         raise HTTPException(
             status_code=500,
             detail="Không thể lưu tệp sách"
