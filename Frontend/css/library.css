@@ -239,6 +239,10 @@
 .library-site.account-page .btn-login { min-height: 46px; border-radius: 7px; background: var(--accent); font: 700 13px 'DM Sans', sans-serif; }
 .library-site.account-page .btn-login:hover { background: var(--accent-dark); }
 .library-site.account-page #loginMessage, .library-site.account-page #registerMessage { min-height: 20px; color: var(--muted); font-size: 12px; }
+.library-site.account-page #forgotPasswordMessage, .library-site.account-page #resetPasswordMessage { min-height: 20px; color: var(--muted); font-size: 12px; line-height: 1.6; }
+.library-site.account-page #forgotPasswordMessage[data-state="success"], .library-site.account-page #resetPasswordMessage[data-state="success"] { color: #436648; }
+.library-site.account-page #forgotPasswordMessage[data-state="error"], .library-site.account-page #resetPasswordMessage[data-state="error"] { color: #b33a2b; }
+.library-site.account-page .btn-login:disabled { cursor: wait; opacity: .65; }
 .library-site.account-page a:not(.site-brand) { color: var(--accent-dark) !important; }
 
 .library-site.admin-site { background: var(--paper); }

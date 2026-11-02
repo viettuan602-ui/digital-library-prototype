@@ -6,9 +6,14 @@ import json
 import logging
 import shutil
 import tempfile
+import hashlib
+import hmac
+import secrets
+from urllib.request import Request as UrlRequest, urlopen
 from typing import Optional, List
 from enum import Enum
 from contextlib import asynccontextmanager
+from urllib.parse import quote
 
 from fastapi import( FastAPI,
                     HTTPException,
@@ -16,14 +21,16 @@ from fastapi import( FastAPI,
                     Depends,
                     Query,
                     UploadFile,
-                    File)
+                    File,
+                    Request,
+                    BackgroundTasks)
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, RedirectResponse
 from pathlib import Path
 from urllib.parse import urljoin
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from pydantic import BaseModel, EmailStr, ConfigDict, Field, field_validator, model_validator
-from sqlalchemy import create_engine, Column, String, Integer, DateTime, or_
+from sqlalchemy import create_engine, Column, String, Integer, DateTime, ForeignKey, or_
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
 from pwdlib import PasswordHash
 from jose import JWTError, jwt
@@ -47,6 +54,12 @@ ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 15
 READING_SESSION_EXPIRE_MINUTES = 10
 PUBLIC_API_BASE_URL = os.getenv("PUBLIC_API_BASE_URL", "http://127.0.0.1:8000").rstrip("/")
+FRONTEND_BASE_URL = os.getenv("FRONTEND_BASE_URL", "http://127.0.0.1:5500").rstrip("/")
+PASSWORD_RESET_EXPIRE_MINUTES = 30
+PASSWORD_RESET_EMAIL_LIMIT = 3
+PASSWORD_RESET_EMAIL_WINDOW_MINUTES = 15
+PASSWORD_RESET_IP_LIMIT = 20
+PASSWORD_RESET_IP_WINDOW_MINUTES = 60
 
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
@@ -107,6 +120,24 @@ class User(Base):
     is_active = Column(Integer, default=1)
 
 
+class PasswordResetToken(Base):
+    __tablename__ = "password_reset_tokens"
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    token_hash = Column(String(64), nullable=False, unique=True, index=True)
+    created_at = Column(DateTime, nullable=False, default=datetime.datetime.utcnow)
+    expires_at = Column(DateTime, nullable=False, index=True)
+    used_at = Column(DateTime, nullable=True)
+
+
+class PasswordResetAttempt(Base):
+    __tablename__ = "password_reset_attempts"
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    email_fingerprint = Column(String(64), nullable=False, index=True)
+    ip_fingerprint = Column(String(64), nullable=False, index=True)
+    created_at = Column(DateTime, nullable=False, default=datetime.datetime.utcnow, index=True)
+
+
 class Book(Base):
     __tablename__ = "books"
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
@@ -135,6 +166,15 @@ class TokenResponse(BaseModel):
     access_token: str
     token_type: str
     role: str
+
+
+class PasswordResetRequest(BaseModel):
+    email: EmailStr
+
+
+class PasswordResetComplete(BaseModel):
+    token: str = Field(min_length=20, max_length=200)
+    new_password: str = Field(min_length=8, max_length=256)
 
 
 def parse_categories(value) -> List[str]:
@@ -233,6 +273,74 @@ def hash_password(password: str) -> str:
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     return password_hash.verify(plain_password, hashed_password)
+
+
+def password_reset_token_hash(token: str) -> str:
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+
+def password_reset_fingerprint(kind: str, value: str) -> str:
+    message = f"password-reset:{kind}:{value}".encode("utf-8")
+    return hmac.new(SECRET_KEY.encode("utf-8"), message, hashlib.sha256).hexdigest()
+
+
+def password_reset_email_configured() -> bool:
+    return bool(
+        os.getenv("RESEND_API_KEY", "").strip()
+        and os.getenv("RESEND_FROM_EMAIL", "").strip()
+        and (APP_ENV != "production" or FRONTEND_BASE_URL.startswith("https://"))
+    )
+
+
+def send_password_reset_email(recipient: str, reset_url: str) -> None:
+    api_key = os.getenv("RESEND_API_KEY", "").strip()
+    from_email = os.getenv("RESEND_FROM_EMAIL", "").strip()
+    from_name = os.getenv("RESEND_FROM_NAME", "Neptruyen").strip() or "Neptruyen"
+    message = {
+        "from": f"{from_name} <{from_email}>",
+        "to": [recipient],
+        "subject": "Đặt lại mật khẩu Neptruyen",
+        "text": (
+            "Chúng tôi nhận được yêu cầu đặt lại mật khẩu cho tài khoản Neptruyen của bạn.\n\n"
+            f"Mở liên kết sau trong vòng {PASSWORD_RESET_EXPIRE_MINUTES} phút để đặt mật khẩu mới:\n"
+            f"{reset_url}\n\n"
+            "Nếu bạn không yêu cầu thao tác này, hãy bỏ qua email. Mật khẩu hiện tại của bạn vẫn an toàn."
+        )
+    }
+    request = UrlRequest(
+        "https://api.resend.com/emails",
+        data=json.dumps(message).encode("utf-8"),
+        headers={
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json"
+        },
+        method="POST"
+    )
+    with urlopen(request, timeout=15) as response:
+        if response.status < 200 or response.status >= 300:
+            raise RuntimeError(f"Email API returned HTTP {response.status}")
+
+
+def deliver_password_reset_email(user_id: str, email: str, token: str) -> None:
+    reset_url = f"{FRONTEND_BASE_URL}/dat-lai-mat-khau.html#token={quote(token, safe='')}"
+    try:
+        send_password_reset_email(email, reset_url)
+    except Exception:
+        logger.exception("Password reset email delivery failed (user_id=%s)", user_id)
+        db = SessionLocal()
+        try:
+            token_record = db.query(PasswordResetToken).filter(
+                PasswordResetToken.token_hash == password_reset_token_hash(token),
+                PasswordResetToken.used_at.is_(None)
+            ).first()
+            if token_record:
+                token_record.used_at = datetime.datetime.utcnow()
+                db.commit()
+        except Exception:
+            db.rollback()
+            logger.exception("Could not invalidate undelivered password reset token (user_id=%s)", user_id)
+        finally:
+            db.close()
 
 def create_access_token(data: dict, expires_delta: Optional[datetime.timedelta] = None):
     to_encode = data.copy()
@@ -379,6 +487,104 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
 
     token = create_access_token(data={"sub": user.id, "role": user.role})
     return {"access_token": token, "token_type": "bearer", "role": user.role}
+
+
+@app.post("/api/v1/auth/password-reset-requests", status_code=status.HTTP_202_ACCEPTED, tags=["Auth"])
+def request_password_reset(
+    payload: PasswordResetRequest,
+    background_tasks: BackgroundTasks,
+    request: Request,
+    db: Session = Depends(get_db)
+):
+    if not password_reset_email_configured():
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Dịch vụ email khôi phục mật khẩu chưa được cấu hình đầy đủ"
+        )
+
+    now = datetime.datetime.utcnow()
+    normalized_email = str(payload.email).strip().lower()
+    client_ip = request.client.host if request.client else "unknown"
+    email_fingerprint = password_reset_fingerprint("email", normalized_email)
+    ip_fingerprint = password_reset_fingerprint("ip", client_ip)
+
+    db.query(PasswordResetAttempt).filter(
+        PasswordResetAttempt.created_at < now - datetime.timedelta(hours=24)
+    ).delete(synchronize_session=False)
+    db.query(PasswordResetToken).filter(
+        PasswordResetToken.expires_at < now - datetime.timedelta(days=1)
+    ).delete(synchronize_session=False)
+
+    recent_email_requests = db.query(PasswordResetAttempt).filter(
+        PasswordResetAttempt.email_fingerprint == email_fingerprint,
+        PasswordResetAttempt.created_at >= now - datetime.timedelta(minutes=PASSWORD_RESET_EMAIL_WINDOW_MINUTES)
+    ).count()
+    recent_ip_requests = db.query(PasswordResetAttempt).filter(
+        PasswordResetAttempt.ip_fingerprint == ip_fingerprint,
+        PasswordResetAttempt.created_at >= now - datetime.timedelta(minutes=PASSWORD_RESET_IP_WINDOW_MINUTES)
+    ).count()
+
+    generic_response = {
+        "message": "Nếu email này có tài khoản, hướng dẫn đặt lại mật khẩu sẽ được gửi đến hộp thư của bạn."
+    }
+    if recent_email_requests >= PASSWORD_RESET_EMAIL_LIMIT or recent_ip_requests >= PASSWORD_RESET_IP_LIMIT:
+        db.commit()
+        return generic_response
+
+    db.add(PasswordResetAttempt(
+        email_fingerprint=email_fingerprint,
+        ip_fingerprint=ip_fingerprint,
+        created_at=now
+    ))
+    user = db.query(User).filter(User.email == normalized_email, User.is_active == 1).first()
+    if not user:
+        db.commit()
+        return generic_response
+
+    raw_token = secrets.token_urlsafe(32)
+    token_hash = password_reset_token_hash(raw_token)
+    db.query(PasswordResetToken).filter(
+        PasswordResetToken.user_id == user.id,
+        PasswordResetToken.used_at.is_(None)
+    ).update({PasswordResetToken.used_at: now}, synchronize_session=False)
+    db.add(PasswordResetToken(
+        user_id=user.id,
+        token_hash=token_hash,
+        created_at=now,
+        expires_at=now + datetime.timedelta(minutes=PASSWORD_RESET_EXPIRE_MINUTES)
+    ))
+    db.commit()
+
+    background_tasks.add_task(deliver_password_reset_email, user.id, user.email, raw_token)
+    return generic_response
+
+
+@app.post("/api/v1/auth/password-resets", tags=["Auth"])
+def complete_password_reset(payload: PasswordResetComplete, db: Session = Depends(get_db)):
+    now = datetime.datetime.utcnow()
+    token_record = db.query(PasswordResetToken).filter(
+        PasswordResetToken.token_hash == password_reset_token_hash(payload.token),
+        PasswordResetToken.used_at.is_(None),
+        PasswordResetToken.expires_at > now
+    ).with_for_update().first()
+    if not token_record:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Liên kết đặt lại mật khẩu không hợp lệ hoặc đã hết hạn")
+
+    user = db.query(User).filter(User.id == token_record.user_id, User.is_active == 1).first()
+    if not user:
+        token_record.used_at = now
+        db.commit()
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Liên kết đặt lại mật khẩu không hợp lệ hoặc đã hết hạn")
+
+    user.hashed_password = hash_password(payload.new_password)
+    token_record.used_at = now
+    db.query(PasswordResetToken).filter(
+        PasswordResetToken.user_id == user.id,
+        PasswordResetToken.id != token_record.id,
+        PasswordResetToken.used_at.is_(None)
+    ).update({PasswordResetToken.used_at: now}, synchronize_session=False)
+    db.commit()
+    return {"message": "Đặt lại mật khẩu thành công. Vui lòng đăng nhập bằng mật khẩu mới."}
 
 
 # ------------------------------------------
