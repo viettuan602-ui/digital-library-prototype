@@ -27,11 +27,9 @@ The current upload limit is 50 MB per PDF. Supabase recommends resumable uploads
 3. Render generates `SECRET_KEY` through the Blueprint. Never replace it with the demo key.
 4. Wait for `/healthz` to report `{"status":"ok","app":"Neptruyen"}`.
 
-### Password reset email
+### Account recovery
 
-The API supports one-time password-reset links. Render Free blocks outbound SMTP on ports 25, 465, and 587, so this project sends reset emails through Resend's HTTPS API instead. Configure `RESEND_API_KEY` and `RESEND_FROM_EMAIL` in the Render API service; the sender address must be allowed by your Resend account. `FRONTEND_BASE_URL` should be the deployed Netlify origin. Keep the API key in Render and do not commit it to GitHub. Until email delivery is configured, the reset-request endpoint returns a service-unavailable response.
-
-Reset tokens are random, expire after 30 minutes, are single-use, and only their SHA-256 digests are stored in the database. Request attempts are limited by email and client IP.
+Email-based password recovery is currently disabled. For a prototype admin account, run `python scripts/reset_account_password.py` from the project root on a trusted machine with `DATABASE_URL` pointed at the intended database. The script prompts for a replacement password without echoing it and stores only the Argon2 hash. Do not expose the database URL or password in source control or chat.
 
 Render Free web services may sleep after inactivity. The first request after sleep can take about a minute. The database and uploaded PDFs use Supabase rather than Render's temporary filesystem.
 
