@@ -456,7 +456,9 @@ def create_reading_session(
 
     return {
         "session_url": f"{PUBLIC_API_BASE_URL}/api/v1/stream/{book.id}?token={session_token}",
-        "content_url": f"{PUBLIC_API_BASE_URL}/api/v1/books/{book.id}/reading-content?token={session_token}",
+        # Keep content reads on the API origin already configured in the frontend.
+        # PUBLIC_API_BASE_URL can be stale while Render renames its generated domain.
+        "content_url": f"/api/v1/books/{book.id}/reading-content?token={session_token}",
         "expires_in_minutes": READING_SESSION_EXPIRE_MINUTES
     }
 

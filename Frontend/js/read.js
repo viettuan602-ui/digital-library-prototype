@@ -89,8 +89,10 @@ async function openBook() {
             return;
         }
 
-        const contentUrl = session.content_url;
-        if (!contentUrl) throw new Error("Máy chủ chưa hỗ trợ giao diện đọc văn bản. Hãy cập nhật API rồi thử lại.");
+        const contentPath = session.content_url;
+        if (!contentPath) throw new Error("Máy chủ chưa hỗ trợ giao diện đọc văn bản. Hãy cập nhật API rồi thử lại.");
+        const contentRoute = new URL(contentPath, `${API_BASE_URL}/`);
+        const contentUrl = new URL(`${contentRoute.pathname}${contentRoute.search}`, `${API_BASE_URL}/`).href;
         const contentResponse = await fetch(contentUrl);
         const content = await contentResponse.json().catch(() => ({}));
         if (!contentResponse.ok) {
