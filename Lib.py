@@ -28,6 +28,7 @@ from sqlalchemy import create_engine, Column, String, Integer, DateTime, Foreign
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
 from pwdlib import PasswordHash
 from jose import JWTError, jwt
+from pypdf import PdfReader
 
 logger = logging.getLogger(__name__)
 
@@ -455,6 +456,7 @@ def create_reading_session(
 
     return {
         "session_url": f"{PUBLIC_API_BASE_URL}/api/v1/stream/{book.id}?token={session_token}",
+        "content_url": f"{PUBLIC_API_BASE_URL}/api/v1/books/{book.id}/reading-content?token={session_token}",
         "expires_in_minutes": READING_SESSION_EXPIRE_MINUTES
     }
 
@@ -717,6 +719,76 @@ def stream_book(
         filename=f"{book.title}.pdf",
         content_disposition_type="inline"
     )
+
+
+@app.get("/api/v1/books/{book_id}/reading-content", tags=["Reading"])
+def get_reading_content(
+        book_id: str,
+        token: str = Query(...),
+        db: Session = Depends(get_db)
+):
+    """Extract selectable PDF text for the in-app novel-style reader."""
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+    except JWTError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Phiên đọc đã hết hạn. Hãy tải lại trang để tiếp tục đọc."
+        )
+
+    if payload.get("type") != "reading_session" or payload.get("book_id") != book_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Phiên đọc không thuộc về sách này")
+
+    book = db.query(Book).filter(
+        Book.id == book_id,
+        Book.status == BookStatus.PUBLISHED.value
+    ).first()
+    if not book or not book.file_path:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Không tìm thấy nội dung sách")
+
+    try:
+        if book.file_path.startswith("supabase://"):
+            if not supabase_storage:
+                raise HTTPException(
+                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                    detail="Chưa cấu hình kho lưu trữ sách"
+                )
+            storage_path = book.file_path.removeprefix("supabase://")
+            pdf_bytes = supabase_storage.storage.from_(SUPABASE_STORAGE_BUCKET).download(storage_path)
+        else:
+            file_path = Path(book.file_path)
+            if not file_path.exists() or not file_path.is_file():
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Không tìm thấy tệp sách")
+            pdf_bytes = file_path.read_bytes()
+
+        pdf = PdfReader(io.BytesIO(pdf_bytes))
+        pages = []
+        for page_number, page in enumerate(pdf.pages, start=1):
+            text = (page.extract_text() or "").strip()
+            if text:
+                pages.append({"number": page_number, "text": text})
+    except HTTPException:
+        raise
+    except Exception as error:
+        logger.exception("Could not extract reading text (book_id=%s)", book_id)
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Không thể trích xuất văn bản từ PDF này. Tệp có thể được quét dạng ảnh hoặc bị lỗi."
+        ) from error
+
+    if not pages:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="PDF này chưa có lớp văn bản để đọc. Cần OCR tệp scan trước khi đọc ở chế độ novel."
+        )
+
+    return {
+        "book_id": book.id,
+        "title": book.title,
+        "author": book.author,
+        "pages": pages,
+        "page_count": len(pdf.pages)
+    }
 
 @app.get("/healthz", tags=["System"])
 def health_check():

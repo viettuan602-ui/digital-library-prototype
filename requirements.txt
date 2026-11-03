@@ -29,6 +29,7 @@ PySocks==1.7.1
 pytest==9.1.1
 python-jose==3.5.0
 python-dotenv>=1,<2
+pypdf>=5,<7
 python-multipart==0.0.32
 rsa==4.9.1
 selenium==4.50.0
