@@ -49,6 +49,9 @@ a { color:inherit; }
 .reader-end > span { color:var(--accent); }
 .reader-end p { margin:9px 0 14px; font:500 16px Literata,Georgia,serif; }
 .reader-end a { color:var(--accent); font-size:13px; text-decoration:none; }
+.load-more-button { display:block; margin:0 auto 15px; padding:10px 16px; border:1px solid var(--line); border-radius:9px; background:var(--panel); color:var(--ink); font:600 13px "DM Sans",sans-serif; cursor:pointer; }
+.load-more-button:hover:not(:disabled) { border-color:var(--accent); color:var(--accent); }
+.load-more-button:disabled { cursor:wait; opacity:.65; }
 @media (max-width:640px) {
   .reader-topbar { height:60px; padding:0 14px; grid-template-columns:auto 1fr auto; gap:8px; }
   .reader-brand { gap:7px; font-size:13px; }

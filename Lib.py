@@ -1,12 +1,10 @@
 import uuid
 import datetime
 import os
-import io
 import json
 import logging
 import shutil
 import tempfile
-from functools import lru_cache
 from typing import Optional, List
 from enum import Enum
 from contextlib import asynccontextmanager
@@ -20,16 +18,16 @@ from fastapi import( FastAPI,
                     File,
                     Request)
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, RedirectResponse
+from fastapi.responses import FileResponse, RedirectResponse, StreamingResponse
 from pathlib import Path
-from urllib.parse import urljoin
+from urllib.parse import quote, urljoin
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from pydantic import BaseModel, EmailStr, ConfigDict, Field, field_validator, model_validator
 from sqlalchemy import create_engine, Column, String, Integer, DateTime, ForeignKey, or_
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
 from pwdlib import PasswordHash
 from jose import JWTError, jwt
-from pypdf import PdfReader
+import httpx
 
 logger = logging.getLogger(__name__)
 
@@ -48,7 +46,7 @@ if APP_ENV == "production" and SECRET_KEY == "DEMO_SECRET_KEY_FOR_LOCAL_TESTING"
     raise RuntimeError("SECRET_KEY must be set to a unique value in production")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 15
-READING_SESSION_EXPIRE_MINUTES = 10
+READING_SESSION_EXPIRE_MINUTES = 240
 PUBLIC_API_BASE_URL = os.getenv("PUBLIC_API_BASE_URL", "http://127.0.0.1:8000").rstrip("/")
 
 SUPABASE_URL = os.getenv("SUPABASE_URL")
@@ -62,20 +60,6 @@ if SUPABASE_STORAGE_ENABLED:
     from supabase import create_client
     supabase_storage = create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
 
-
-@lru_cache(maxsize=1)
-def load_reader_pdf(file_path: str) -> bytes:
-    """Keep one recently read PDF in memory so paged text requests avoid repeat downloads."""
-    if file_path.startswith("supabase://"):
-        if not supabase_storage:
-            raise RuntimeError("Chưa cấu hình kho lưu trữ sách")
-        storage_path = file_path.removeprefix("supabase://")
-        return supabase_storage.storage.from_(SUPABASE_STORAGE_BUCKET).download(storage_path)
-
-    local_path = Path(file_path)
-    if not local_path.exists() or not local_path.is_file():
-        raise FileNotFoundError("Không tìm thấy tệp sách")
-    return local_path.read_bytes()
 
 oauth2_scheme_optional = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login", auto_error=False)
 
@@ -359,6 +343,7 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["Accept-Ranges", "Content-Range", "Content-Length", "ETag", "Last-Modified"],
 )
 
 
@@ -470,11 +455,10 @@ def create_reading_session(
         expires_delta=datetime.timedelta( minutes= READING_SESSION_EXPIRE_MINUTES)
     )
 
+    document_url = f"/api/v1/books/{book.id}/document?token={session_token}"
     return {
         "session_url": f"{PUBLIC_API_BASE_URL}/api/v1/stream/{book.id}?token={session_token}",
-        # Keep content reads on the API origin already configured in the frontend.
-        # PUBLIC_API_BASE_URL can be stale while Render renames its generated domain.
-        "content_url": f"/api/v1/books/{book.id}/reading-content?token={session_token}",
+        "document_url": document_url,
         "expires_in_minutes": READING_SESSION_EXPIRE_MINUTES
     }
 
@@ -574,7 +558,6 @@ def upload_book_file(
                     output.write(chunk)
             book.file_path = str(file_path.resolve())
 
-        load_reader_pdf.cache_clear()
         db.commit()
 
         return {
@@ -640,6 +623,78 @@ def update_book_status(
 
     db.commit()
     return {"message": f"Chuyển trạng thái thành công: {current_st} -> {book.status}"}
+
+@app.get("/api/v1/books/{book_id}/document", tags=["Reading"])
+async def read_book_document(
+        request: Request,
+        book_id: str,
+        token: str = Query(...),
+        db: Session = Depends(get_db)
+):
+    """Proxy PDF byte ranges through the API so the reader avoids full-file requests and storage CORS issues."""
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+    except JWTError:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Phiên đọc không hợp lệ hoặc đã hết hạn")
+    if payload.get("type") != "reading_session" or payload.get("book_id") != book_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Phiên đọc không thuộc về sách này")
+
+    book = db.query(Book).filter(
+        Book.id == book_id,
+        Book.status == BookStatus.PUBLISHED.value
+    ).first()
+    if not book or not book.file_path:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Không tìm thấy nội dung sách")
+
+    if not book.file_path.startswith("supabase://"):
+        file_path = Path(book.file_path)
+        if not file_path.exists() or not file_path.is_file():
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Không tìm thấy tệp sách")
+        return FileResponse(
+            path=file_path,
+            media_type="application/pdf",
+            filename=f"{book.title}.pdf",
+            content_disposition_type="inline"
+        )
+
+    if not supabase_storage:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Chưa cấu hình kho lưu trữ sách")
+
+    storage_path = book.file_path.removeprefix("supabase://")
+    try:
+        storage_url = (
+            f"{SUPABASE_URL.rstrip('/')}/storage/v1/object/"
+            f"{quote(SUPABASE_STORAGE_BUCKET, safe='')}/{quote(storage_path, safe='/')}"
+        )
+        client = httpx.AsyncClient(timeout=httpx.Timeout(90.0, connect=15.0), follow_redirects=True)
+        headers = {"Range": request.headers["range"]} if request and request.headers.get("range") else {}
+        headers.update({
+            "Authorization": f"Bearer {SUPABASE_SERVICE_ROLE_KEY}",
+            "apikey": SUPABASE_SERVICE_ROLE_KEY
+        })
+        upstream_request = client.build_request("GET", storage_url, headers=headers)
+        upstream = await client.send(upstream_request, stream=True)
+        response_headers = {
+            key: upstream.headers[key]
+            for key in ("accept-ranges", "content-range", "content-length", "content-type", "etag", "last-modified")
+            if key in upstream.headers
+        }
+
+        async def proxy_body():
+            try:
+                async for chunk in upstream.aiter_raw():
+                    yield chunk
+            finally:
+                await upstream.aclose()
+                await client.aclose()
+
+        return StreamingResponse(proxy_body(), status_code=upstream.status_code, headers=response_headers)
+    except HTTPException:
+        raise
+    except Exception as error:
+        logger.exception("Could not proxy PDF range (book_id=%s)", book_id)
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Không thể tải một phần PDF") from error
+
 
 @app.get("/api/v1/stream/{book_id}", tags=["Reading"])
 def stream_book(
@@ -739,64 +794,6 @@ def stream_book(
         content_disposition_type="inline"
     )
 
-
-@app.get("/api/v1/books/{book_id}/reading-content", tags=["Reading"])
-def get_reading_content(
-        book_id: str,
-        token: str = Query(...),
-        start_page: int = Query(1, ge=1),
-        page_limit: int = Query(200, ge=1, le=300),
-        db: Session = Depends(get_db)
-):
-    """Return one bounded PDF text range so no browser request stays open for a whole book."""
-    try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-    except JWTError:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Phiên đọc đã hết hạn. Hãy tải lại trang để tiếp tục đọc."
-        )
-
-    if payload.get("type") != "reading_session" or payload.get("book_id") != book_id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Phiên đọc không thuộc về sách này")
-
-    book = db.query(Book).filter(
-        Book.id == book_id,
-        Book.status == BookStatus.PUBLISHED.value
-    ).first()
-    if not book or not book.file_path:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Không tìm thấy nội dung sách")
-
-    try:
-        pdf = PdfReader(io.BytesIO(load_reader_pdf(book.file_path)))
-        page_count = len(pdf.pages)
-        end_page = min(start_page + page_limit - 1, page_count)
-        pages = []
-        for page_number in range(start_page, end_page + 1):
-            page_text = (pdf.pages[page_number - 1].extract_text() or "").strip()
-            if page_text:
-                pages.append({"number": page_number, "text": page_text})
-    except FileNotFoundError as error:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(error)) from error
-    except RuntimeError as error:
-        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(error)) from error
-    except Exception as error:
-        logger.exception("Could not extract reading range (book_id=%s, start_page=%s)", book_id, start_page)
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="Không thể trích xuất văn bản từ PDF này. Tệp có thể bị lỗi hoặc chưa tải đủ."
-        ) from error
-
-    return {
-        "book_id": book.id,
-        "title": book.title,
-        "author": book.author,
-        "pages": pages,
-        "start_page": start_page,
-        "next_page": end_page + 1,
-        "page_count": page_count,
-        "has_more": end_page < page_count
-    }
 
 @app.get("/healthz", tags=["System"])
 def health_check():
