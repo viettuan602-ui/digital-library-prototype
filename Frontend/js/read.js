@@ -33,26 +33,66 @@ function textToParagraphs(text) {
         .filter(Boolean);
 }
 
-function renderPages(pages) {
-    const fragment = document.createDocumentFragment();
-    pages.forEach((page) => {
-        const section = document.createElement("section");
-        section.className = "source-page";
-        textToParagraphs(page.text || "").forEach((text) => {
-            const paragraph = document.createElement("p");
-            paragraph.textContent = text;
-            section.append(paragraph);
-        });
-        if (section.childElementCount) fragment.append(section);
+function appendPage(page) {
+    const section = document.createElement("section");
+    section.className = "source-page";
+    textToParagraphs(page.text || "").forEach((text) => {
+        const paragraph = document.createElement("p");
+        paragraph.textContent = text;
+        section.append(paragraph);
     });
-    chapterContent.replaceChildren(fragment);
-    chapterContent.hidden = chapterContent.childElementCount === 0;
-    readerEnd.hidden = chapterContent.hidden;
-    if (chapterContent.hidden) {
-        showError("PDF này không có văn bản có thể trích xuất. Tệp scan cần được OCR trước khi đọc ở giao diện này.");
-        return false;
+    if (section.childElementCount) {
+        chapterContent.append(section);
+        chapterContent.hidden = false;
+        readerEnd.hidden = false;
+        requestAnimationFrame(updateProgress);
     }
-    return true;
+}
+
+function consumeReaderEvent(event) {
+    if (event.type === "start") {
+        readerStatus.querySelector("p").textContent = "Đang tải PDF và chuẩn bị văn bản…";
+        chapterContent.hidden = false;
+    } else if (event.type === "progress") {
+        readerStatus.querySelector("p").textContent = `Đang trích xuất văn bản (${event.page_count} trang)…`;
+    } else if (event.type === "page") {
+        appendPage(event);
+        readerStatus.querySelector("p").textContent = `Đã tải nội dung đến trang PDF ${event.number}…`;
+    } else if (event.type === "error") {
+        if (chapterContent.childElementCount) {
+            readerStatus.querySelector("p").textContent = event.detail;
+            readerStatus.classList.add("reader-status-warning");
+        } else {
+            showError(event.detail);
+        }
+    } else if (event.type === "done") {
+        readerStatus.hidden = true;
+        readerStatus.classList.remove("reader-status-warning");
+        if (!chapterContent.childElementCount) {
+            showError("PDF này chưa có văn bản có thể trích xuất. Tệp scan cần được OCR trước khi đọc ở giao diện này.");
+        }
+        updateProgress();
+    }
+}
+
+async function readContentStream(response) {
+    if (!response.body) throw new Error("Trình duyệt không hỗ trợ tải nội dung dạng luồng.");
+    const streamReader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+    while (true) {
+        const { value, done } = await streamReader.read();
+        buffer += decoder.decode(value || new Uint8Array(), { stream: !done });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() || "";
+        for (const line of lines) {
+            if (!line.trim()) continue;
+            try { consumeReaderEvent(JSON.parse(line)); }
+            catch (error) { console.error("Invalid reading stream event:", error); }
+        }
+        if (done) break;
+    }
+    if (buffer.trim()) consumeReaderEvent(JSON.parse(buffer));
 }
 
 async function openBook() {
@@ -94,15 +134,12 @@ async function openBook() {
         const contentRoute = new URL(contentPath, `${API_BASE_URL}/`);
         const contentUrl = new URL(`${contentRoute.pathname}${contentRoute.search}`, `${API_BASE_URL}/`).href;
         const contentResponse = await fetch(contentUrl);
-        const content = await contentResponse.json().catch(() => ({}));
         if (!contentResponse.ok) {
+            const content = await contentResponse.json().catch(() => ({}));
             showError(content.detail || "Không thể tải nội dung truyện.", contentResponse.status === 401);
             return;
         }
-
-        if (!renderPages(content.pages || [])) return;
-        readerStatus.hidden = true;
-        updateProgress();
+        await readContentStream(contentResponse);
     } catch (error) {
         showError(error.message || "Không thể kết nối đến máy chủ Neptruyen.");
         console.error("Open reading content error:", error);

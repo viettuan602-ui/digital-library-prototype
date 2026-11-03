@@ -19,7 +19,7 @@ from fastapi import( FastAPI,
                     File,
                     Request)
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, RedirectResponse
+from fastapi.responses import FileResponse, RedirectResponse, StreamingResponse
 from pathlib import Path
 from urllib.parse import urljoin
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
@@ -729,7 +729,7 @@ def get_reading_content(
         token: str = Query(...),
         db: Session = Depends(get_db)
 ):
-    """Extract selectable PDF text for the in-app novel-style reader."""
+    """Stream selectable PDF text as newline-delimited JSON for the reader."""
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
     except JWTError:
@@ -748,49 +748,51 @@ def get_reading_content(
     if not book or not book.file_path:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Không tìm thấy nội dung sách")
 
-    try:
-        if book.file_path.startswith("supabase://"):
-            if not supabase_storage:
-                raise HTTPException(
-                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                    detail="Chưa cấu hình kho lưu trữ sách"
-                )
-            storage_path = book.file_path.removeprefix("supabase://")
-            pdf_bytes = supabase_storage.storage.from_(SUPABASE_STORAGE_BUCKET).download(storage_path)
-        else:
-            file_path = Path(book.file_path)
-            if not file_path.exists() or not file_path.is_file():
-                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Không tìm thấy tệp sách")
-            pdf_bytes = file_path.read_bytes()
-
-        pdf = PdfReader(io.BytesIO(pdf_bytes))
-        pages = []
-        for page_number, page in enumerate(pdf.pages, start=1):
-            text = (page.extract_text() or "").strip()
-            if text:
-                pages.append({"number": page_number, "text": text})
-    except HTTPException:
-        raise
-    except Exception as error:
-        logger.exception("Could not extract reading text (book_id=%s)", book_id)
+    if book.file_path.startswith("supabase://") and not supabase_storage:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="Không thể trích xuất văn bản từ PDF này. Tệp có thể được quét dạng ảnh hoặc bị lỗi."
-        ) from error
-
-    if not pages:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="PDF này chưa có lớp văn bản để đọc. Cần OCR tệp scan trước khi đọc ở chế độ novel."
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Chưa cấu hình kho lưu trữ sách"
         )
+    if not book.file_path.startswith("supabase://"):
+        file_path = Path(book.file_path)
+        if not file_path.exists() or not file_path.is_file():
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Không tìm thấy tệp sách")
 
-    return {
-        "book_id": book.id,
-        "title": book.title,
-        "author": book.author,
-        "pages": pages,
-        "page_count": len(pdf.pages)
-    }
+    def stream_pages():
+        # Emit response headers and an initial event before waiting for Supabase/PDF parsing.
+        yield json.dumps({"type": "start", "book_id": book.id, "title": book.title, "author": book.author}) + "\n"
+        try:
+            if book.file_path.startswith("supabase://"):
+                storage_path = book.file_path.removeprefix("supabase://")
+                pdf_bytes = supabase_storage.storage.from_(SUPABASE_STORAGE_BUCKET).download(storage_path)
+            else:
+                pdf_bytes = file_path.read_bytes()
+
+            pdf = PdfReader(io.BytesIO(pdf_bytes))
+            page_count = len(pdf.pages)
+            yield json.dumps({"type": "progress", "page_count": page_count}) + "\n"
+            extracted_pages = 0
+            for page_number, page in enumerate(pdf.pages, start=1):
+                page_text = (page.extract_text() or "").strip()
+                if page_text:
+                    extracted_pages += 1
+                    yield json.dumps({"type": "page", "number": page_number, "text": page_text}, ensure_ascii=False) + "\n"
+
+            if not extracted_pages:
+                yield json.dumps({
+                    "type": "error",
+                    "detail": "PDF này chưa có văn bản có thể trích xuất. Tệp scan cần được OCR trước khi đọc ở giao diện này."
+                }, ensure_ascii=False) + "\n"
+                return
+            yield json.dumps({"type": "done", "page_count": page_count}) + "\n"
+        except Exception:
+            logger.exception("Could not stream reading text (book_id=%s)", book_id)
+            yield json.dumps({
+                "type": "error",
+                "detail": "Không thể đọc PDF từ kho lưu trữ. Vui lòng thử lại sau."
+            }, ensure_ascii=False) + "\n"
+
+    return StreamingResponse(stream_pages(), media_type="application/x-ndjson; charset=utf-8")
 
 @app.get("/healthz", tags=["System"])
 def health_check():
