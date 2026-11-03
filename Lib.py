@@ -6,6 +6,7 @@ import json
 import logging
 import shutil
 import tempfile
+from functools import lru_cache
 from typing import Optional, List
 from enum import Enum
 from contextlib import asynccontextmanager
@@ -19,7 +20,7 @@ from fastapi import( FastAPI,
                     File,
                     Request)
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, RedirectResponse, StreamingResponse
+from fastapi.responses import FileResponse, RedirectResponse
 from pathlib import Path
 from urllib.parse import urljoin
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
@@ -60,6 +61,21 @@ supabase_storage = None
 if SUPABASE_STORAGE_ENABLED:
     from supabase import create_client
     supabase_storage = create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
+
+
+@lru_cache(maxsize=1)
+def load_reader_pdf(file_path: str) -> bytes:
+    """Keep one recently read PDF in memory so paged text requests avoid repeat downloads."""
+    if file_path.startswith("supabase://"):
+        if not supabase_storage:
+            raise RuntimeError("Chưa cấu hình kho lưu trữ sách")
+        storage_path = file_path.removeprefix("supabase://")
+        return supabase_storage.storage.from_(SUPABASE_STORAGE_BUCKET).download(storage_path)
+
+    local_path = Path(file_path)
+    if not local_path.exists() or not local_path.is_file():
+        raise FileNotFoundError("Không tìm thấy tệp sách")
+    return local_path.read_bytes()
 
 oauth2_scheme_optional = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login", auto_error=False)
 
@@ -558,6 +574,7 @@ def upload_book_file(
                     output.write(chunk)
             book.file_path = str(file_path.resolve())
 
+        load_reader_pdf.cache_clear()
         db.commit()
 
         return {
@@ -727,9 +744,11 @@ def stream_book(
 def get_reading_content(
         book_id: str,
         token: str = Query(...),
+        start_page: int = Query(1, ge=1),
+        page_limit: int = Query(200, ge=1, le=300),
         db: Session = Depends(get_db)
 ):
-    """Stream selectable PDF text as newline-delimited JSON for the reader."""
+    """Return one bounded PDF text range so no browser request stays open for a whole book."""
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
     except JWTError:
@@ -748,51 +767,36 @@ def get_reading_content(
     if not book or not book.file_path:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Không tìm thấy nội dung sách")
 
-    if book.file_path.startswith("supabase://") and not supabase_storage:
+    try:
+        pdf = PdfReader(io.BytesIO(load_reader_pdf(book.file_path)))
+        page_count = len(pdf.pages)
+        end_page = min(start_page + page_limit - 1, page_count)
+        pages = []
+        for page_number in range(start_page, end_page + 1):
+            page_text = (pdf.pages[page_number - 1].extract_text() or "").strip()
+            if page_text:
+                pages.append({"number": page_number, "text": page_text})
+    except FileNotFoundError as error:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(error)) from error
+    except RuntimeError as error:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(error)) from error
+    except Exception as error:
+        logger.exception("Could not extract reading range (book_id=%s, start_page=%s)", book_id, start_page)
         raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Chưa cấu hình kho lưu trữ sách"
-        )
-    if not book.file_path.startswith("supabase://"):
-        file_path = Path(book.file_path)
-        if not file_path.exists() or not file_path.is_file():
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Không tìm thấy tệp sách")
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Không thể trích xuất văn bản từ PDF này. Tệp có thể bị lỗi hoặc chưa tải đủ."
+        ) from error
 
-    def stream_pages():
-        # Emit response headers and an initial event before waiting for Supabase/PDF parsing.
-        yield json.dumps({"type": "start", "book_id": book.id, "title": book.title, "author": book.author}) + "\n"
-        try:
-            if book.file_path.startswith("supabase://"):
-                storage_path = book.file_path.removeprefix("supabase://")
-                pdf_bytes = supabase_storage.storage.from_(SUPABASE_STORAGE_BUCKET).download(storage_path)
-            else:
-                pdf_bytes = file_path.read_bytes()
-
-            pdf = PdfReader(io.BytesIO(pdf_bytes))
-            page_count = len(pdf.pages)
-            yield json.dumps({"type": "progress", "page_count": page_count}) + "\n"
-            extracted_pages = 0
-            for page_number, page in enumerate(pdf.pages, start=1):
-                page_text = (page.extract_text() or "").strip()
-                if page_text:
-                    extracted_pages += 1
-                    yield json.dumps({"type": "page", "number": page_number, "text": page_text}, ensure_ascii=False) + "\n"
-
-            if not extracted_pages:
-                yield json.dumps({
-                    "type": "error",
-                    "detail": "PDF này chưa có văn bản có thể trích xuất. Tệp scan cần được OCR trước khi đọc ở giao diện này."
-                }, ensure_ascii=False) + "\n"
-                return
-            yield json.dumps({"type": "done", "page_count": page_count}) + "\n"
-        except Exception:
-            logger.exception("Could not stream reading text (book_id=%s)", book_id)
-            yield json.dumps({
-                "type": "error",
-                "detail": "Không thể đọc PDF từ kho lưu trữ. Vui lòng thử lại sau."
-            }, ensure_ascii=False) + "\n"
-
-    return StreamingResponse(stream_pages(), media_type="application/x-ndjson; charset=utf-8")
+    return {
+        "book_id": book.id,
+        "title": book.title,
+        "author": book.author,
+        "pages": pages,
+        "start_page": start_page,
+        "next_page": end_page + 1,
+        "page_count": page_count,
+        "has_more": end_page < page_count
+    }
 
 @app.get("/healthz", tags=["System"])
 def health_check():
