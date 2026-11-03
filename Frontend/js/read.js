@@ -1,8 +1,6 @@
-import * as pdfjsLib from "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.min.mjs";
-
-pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.worker.min.mjs";
-
 const API_ROOT = (window.DIGITAL_LIBRARY_API_URL || "http://127.0.0.1:8000").replace(/\/$/, "");
+const PDFJS_MODULE_URL = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.min.mjs";
+const PDFJS_WORKER_URL = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.worker.min.mjs";
 const $ = (id) => document.getElementById(id);
 const bookTitle = $("bookTitle");
 const bookMeta = $("bookMeta");
@@ -37,6 +35,7 @@ let lastPageNumber = 0;
 let readingInProgress = false;
 let extractedTextPages = 0;
 let readingEpoch = 0;
+let pdfjsLib = null;
 
 $("detailsLink").href = detailUrl;
 $("backToDetails").href = detailUrl;
@@ -132,7 +131,8 @@ function shouldJoinAcrossPages(previous, next, startsIndented) {
     const previousText = previous.textContent.trimEnd();
     const nextText = next.trimStart();
     if (!previousText || !nextText) return false;
-    return !startsIndented || !/[.!?…][”’\"')\]]?$/u.test(previousText) || /^[\p{Ll}]/u.test(nextText);
+    const endsSentence = /[.!?…](?:[”’"')\x5D])?$/u.test(previousText);
+    return !startsIndented || !endsSentence || /^[\p{Ll}]/u.test(nextText);
 }
 
 function joinPageContinuation(previous, next) {
@@ -352,6 +352,10 @@ async function openBook() {
         }
         if (!documentUrl) throw new Error("Máy chủ chưa cấp liên kết đọc an toàn.");
         documentUrl = new URL(documentUrl, `${API_ROOT}/`).href;
+
+        readerStatus.querySelector("p").textContent = "Đang tải bộ đọc PDF…";
+        pdfjsLib = await import(PDFJS_MODULE_URL);
+        pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS_WORKER_URL;
         readerStatus.querySelector("p").textContent = "Đang mở PDF theo từng phần…";
         const loadingTask = pdfjsLib.getDocument({ url: documentUrl, rangeChunkSize: 65536, disableStream: true, disableAutoFetch: true });
         loadingTask.onProgress = ({ loaded, total }) => {
