@@ -57,24 +57,106 @@ function textToParagraphs(text) {
         .filter(Boolean);
 }
 
-function pdfTextToPlainText(items) {
-    return items.map((item) => `${item.str || ""}${item.hasEOL ? "\n" : " "}`).join("").trim();
+function normalizeHeading(text) {
+    return text.toLocaleLowerCase("vi").normalize("NFC").replace(/[^\p{L}\p{N}]+/gu, " ").trim();
 }
 
-function appendPage(pageNumber, text) {
-    const section = document.createElement("section");
-    section.className = "source-page";
-    section.dataset.page = String(pageNumber);
-    textToParagraphs(text).forEach((paragraphText) => {
+function isPdfHeaderLine(line) {
+    const cleaned = line.replace(/\s+/g, " ").trim();
+    if (/^(?:HARRY\s+POTTER|J\.?\s*K\.?\s*ROWLING)$/i.test(cleaned)) return true;
+    if (/www\.dtv-ebook\.com/i.test(cleaned)) return true;
+    if (/^chương\s+\d+\s*$/i.test(cleaned)) return true;
+    return Boolean(currentChapter?.title && normalizeHeading(cleaned) === normalizeHeading(currentChapter.title));
+}
+
+function pdfTextToPlainText(items) {
+    const lines = [];
+    let currentText = "";
+    let currentY = null;
+    let currentHeight = 0;
+
+    const flushLine = () => {
+        const text = currentText.replace(/\s+/g, " ").trim();
+        if (text) lines.push({ text, y: currentY, x: currentX, height: currentHeight });
+        currentText = "";
+        currentY = null;
+        currentX = null;
+        currentHeight = 0;
+    };
+
+    let currentX = null;
+    for (const item of items) {
+        const text = (item.str || "").replace(/[\r\n]+/g, " ");
+        if (!text.trim()) continue;
+        const y = Number.isFinite(item.transform?.[5]) ? item.transform[5] : null;
+        const height = Number(item.height) || 0;
+        if (currentText && y !== null && currentY !== null && Math.abs(y - currentY) > 2) flushLine();
+        if (!currentText) {
+            currentY = y;
+            currentX = Number.isFinite(item.transform?.[4]) ? item.transform[4] : null;
+            currentHeight = height;
+        }
+        currentText += `${currentText && !/\s$/.test(currentText) ? " " : ""}${text}`;
+        currentHeight = Math.max(currentHeight, height);
+        if (item.hasEOL) flushLine();
+    }
+    flushLine();
+
+    const contentLines = lines.filter(({ text }) => !isPdfHeaderLine(text));
+    const normalGaps = [];
+    for (let index = 1; index < contentLines.length; index += 1) {
+        const previousY = contentLines[index - 1].y;
+        const currentYValue = contentLines[index].y;
+        if (previousY === null || currentYValue === null) continue;
+        const gap = Math.abs(currentYValue - previousY);
+        if (gap > 2 && gap < 60) normalGaps.push(gap);
+    }
+    normalGaps.sort((a, b) => a - b);
+    const lineSpacing = normalGaps.length ? normalGaps[Math.floor(normalGaps.length / 2)] : 0;
+    const paragraphGap = Math.max(24, lineSpacing * 1.55);
+
+    const text = contentLines.map((line, index) => {
+        if (index === 0) return line.text;
+        const previousY = contentLines[index - 1].y;
+        const gap = previousY !== null && line.y !== null ? Math.abs(line.y - previousY) : 0;
+        return `${gap > paragraphGap ? "\n\n" : "\n"}${line.text}`;
+    }).join("").trim();
+    const leftEdge = Math.min(...contentLines.map((line) => line.x).filter(Number.isFinite));
+    const startsIndented = Number.isFinite(contentLines[0]?.x) && Number.isFinite(leftEdge)
+        && contentLines[0].x > leftEdge + 6;
+    return { text, startsIndented };
+}
+
+function shouldJoinAcrossPages(previous, next, startsIndented) {
+    if (!previous || !next || /^[-−–—“"‘]/u.test(next.trim())) return false;
+    const previousText = previous.textContent.trimEnd();
+    const nextText = next.trimStart();
+    if (!previousText || !nextText) return false;
+    return !startsIndented || !/[.!?…][”’\"')\]]?$/u.test(previousText) || /^[\p{Ll}]/u.test(nextText);
+}
+
+function joinPageContinuation(previous, next) {
+    const left = previous.textContent.trimEnd();
+    const right = next.trimStart();
+    if (/-$/.test(left) && /^[\p{Ll}]/u.test(right)) previous.textContent = `${left.slice(0, -1)}${right}`;
+    else previous.textContent = `${left} ${right}`;
+}
+
+function appendPage(pageNumber, { text, startsIndented }) {
+    const paragraphs = textToParagraphs(text);
+    if (!paragraphs.length) return;
+
+    const previous = chapterContent.lastElementChild;
+    if (previous && shouldJoinAcrossPages(previous, paragraphs[0], startsIndented)) {
+        joinPageContinuation(previous, paragraphs.shift());
+    }
+    paragraphs.forEach((paragraphText) => {
         const paragraph = document.createElement("p");
         paragraph.textContent = paragraphText;
-        section.append(paragraph);
+        chapterContent.append(paragraph);
     });
-    if (section.childElementCount) {
-        chapterContent.append(section);
-        chapterContent.hidden = false;
-        extractedTextPages += 1;
-    }
+    chapterContent.hidden = false;
+    extractedTextPages += 1;
 }
 
 function flattenOutline(items, result = []) {
